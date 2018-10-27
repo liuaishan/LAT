@@ -7,8 +7,7 @@
 '''
 
 # TODO
-# 1. training problem when adding gradient to input x (different codes leading to different results????)
-# 2. before or after activation?
+# 1. before or after activation?
 
 import torch
 import torch.nn as nn
@@ -22,7 +21,7 @@ BATCH_SIZE = 64
 LR = 0.001
 DOWNLOAD_MNIST = True
 CLASS_NUM = 10
-PRO_NUM = 5 # progress iteration number
+PRO_NUM = 10 # progress iteration number
 EPSILON = 0.1 # noise constraint
 ALPHA = 1.0 # velocity of momentum
 ENABLE_LAT = True
@@ -81,20 +80,20 @@ class naive_CNN(nn.Module):
         self.input = x
         self.input.retain_grad()
         # LAT: add saved grad
-        input_add = self.input.add(EPSILON*torch.sign(self.x_reg.data))
+        input_add = self.input.add((EPSILON / PRO_NUM) * torch.sign(self.x_reg.data))
 
         # layer 1
         self.z1 = self.conv1(input_add)
         # LAT: enable .grad attribute for non-leaf nodes
         self.z1.retain_grad()
-        z1_add = self.z1.add(EPSILON*torch.sign(self.z1_reg.data))
+        z1_add = self.z1.add((EPSILON / PRO_NUM) * torch.sign(self.z1_reg.data))
         a1 = self.relu(z1_add)
         p1 = self.maxpool(a1)
 
         #  layer 2
         self.z2 = self.conv2(p1)
         self.z2.retain_grad()
-        z2_add = self.z2.add(EPSILON*torch.sign(self.z2_reg.data))
+        z2_add = self.z2.add((EPSILON / PRO_NUM) * torch.sign(self.z2_reg.data))
         a2 = self.relu(z2_add)
         p2 = self.maxpool(a2)
 
@@ -145,11 +144,12 @@ for epoch in range(EPOCH):
             cnn.z2_reg.data = ALPHA * cnn.z2_reg.data + \
                               torch.sign(cnn.z2.grad)/torch.norm(cnn.z2.grad, 2)
 
-            #cnn.x_reg.data = ALPHA * cnn.x_reg.data + \
-            #                  torch.sign(iter_input_x.grad) / torch.norm(iter_input_x.grad, 2)
+            cnn.x_reg.data = ALPHA * cnn.x_reg.data + \
+                              torch.sign(iter_input_x.grad) / torch.norm(iter_input_x.grad, 2)
+
             # add or not???? grad of input x
-            temp = torch.clamp(iter_input_x.detach() + EPSILON * torch.sign(iter_input_x.grad),max=1,min=0)
-            iter_input_x = iter_input_x.add(temp)
+            #temp = torch.clamp(iter_input_x.detach() + EPSILON * torch.sign(iter_input_x.grad),max=1,min=0)
+            #iter_input_x = iter_input_x.add(temp)
 
 
         # test acc for validation set
@@ -166,6 +166,7 @@ for epoch in range(EPOCH):
                 torch.save(cnn.state_dict(), MODEL_PATH + 'lat_param.pkl')
             else:
                 torch.save(cnn.state_dict(), MODEL_PATH + 'naive_param.pkl')
+
 
         # print batch-size predictions from test data
         test_output, _ = cnn(b_x)
