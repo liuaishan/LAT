@@ -25,10 +25,10 @@ PRO_NUM = 10 # progress iteration number
 EPSILON = 0.1 # noise constraint
 ALPHA = 1.0 # velocity of momentum
 ENABLE_LAT = True
-MODEL_PATH = 'C:\\Users\\SEELE\\Desktop\\LAT\\LAT\\model\\'
+MODEL_PATH = 'C:\\Users\\EASON\\Desktop\\LAT\\LAT\\model\\'
 
 train_data = torchvision.datasets.MNIST(
-    root='C:\\Users\\SEELE\\Desktop\\LAT\\LAT\\MNIST\\',
+    root='C:\\Users\\EASON\\Desktop\\LAT\\LAT\\MNIST\\',
     train=True,
     transform=torchvision.transforms.ToTensor(),
     download=DOWNLOAD_MNIST
@@ -37,7 +37,7 @@ train_data = torchvision.datasets.MNIST(
 
 train_loader = Data.DataLoader(dataset=train_data, batch_size=BATCH_SIZE, shuffle=True)
 
-test_data = torchvision.datasets.MNIST(root='C:\\Users\\SEELE\\Desktop\\LAT\\LAT\\MNIST\\', train=False)
+test_data = torchvision.datasets.MNIST(root='C:\\Users\\EASON\\Desktop\\LAT\\LAT\\MNIST\\', train=False)
 
 test_x = torch.unsqueeze(test_data.test_data, dim=1).type(torch.FloatTensor)[:BATCH_SIZE] / 255.
 test_y = test_data.test_labels[:BATCH_SIZE]
@@ -124,6 +124,9 @@ loss_func = nn.CrossEntropyLoss()
 for epoch in range(EPOCH):
     for step, (b_x, b_y) in enumerate(train_loader):
 
+        if not ENABLE_LAT:
+            PRO_NUM = 1
+
         # progressive process
         for iter in range(PRO_NUM):
             iter_input_x = b_x
@@ -139,17 +142,19 @@ for epoch in range(EPOCH):
             # LAT: save grad in backward propagation
             # momentum is implemented here
             # L1 norm? or L2 norm?
-            cnn.z1_reg.data = ALPHA * cnn.z1_reg.data + \
-                              torch.sign(cnn.z1.grad)/torch.norm(cnn.z1.grad, 2)
-            cnn.z2_reg.data = ALPHA * cnn.z2_reg.data + \
-                              torch.sign(cnn.z2.grad)/torch.norm(cnn.z2.grad, 2)
 
-            cnn.x_reg.data = ALPHA * cnn.x_reg.data + \
-                              torch.sign(iter_input_x.grad) / torch.norm(iter_input_x.grad, 2)
+            if ENABLE_LAT:
+                cnn.z1_reg.data = ALPHA * cnn.z1_reg.data + \
+                                  torch.sign(cnn.z1.grad)/torch.norm(cnn.z1.grad, 2)
+                cnn.z2_reg.data = ALPHA * cnn.z2_reg.data + \
+                                  torch.sign(cnn.z2.grad)/torch.norm(cnn.z2.grad, 2)
 
-            # add or not???? grad of input x
-            #temp = torch.clamp(iter_input_x.detach() + EPSILON * torch.sign(iter_input_x.grad),max=1,min=0)
-            #iter_input_x = iter_input_x.add(temp)
+                cnn.x_reg.data = ALPHA * cnn.x_reg.data + \
+                                  torch.sign(iter_input_x.grad) / torch.norm(iter_input_x.grad, 2)
+
+                # add or not???? grad of input x
+                #temp = torch.clamp(iter_input_x.detach() + EPSILON * torch.sign(iter_input_x.grad),max=1,min=0)
+                #iter_input_x = iter_input_x.add(temp)
 
 
         # test acc for validation set
