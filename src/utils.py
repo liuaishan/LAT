@@ -9,25 +9,29 @@
 import os
 import numpy as np
 import pickle
-
+import torch
 
 # read data from files
-# @return data,label (numpy array)
+# @return (numpy array) data, label, len
 def read_data(file_path):
 
     if not os.path.exists(file_path):
-        return None, None
+        return None, None, 0
 
     with open(file_path, 'rb') as fr:
-        data_set = pickle.load(file_path)
-        size = len(data_set)
-
+        data_set = pickle.load(fr)
+        size = len(data_set[0])
+        list_data = []
+        list_label = []
         # illegal data
-        if not len(data_set['data']) == len(data_set['label']):
-            return None, None
-        
-        data = data_set['data'][:size] / 255.
-        label = data_set['label'][:size] / 255.
+        if not len(data_set[0]) == len(data_set[1]):
+            return None, None, 0
+
+        #data = data_set[0][:size] / 255.
+
+        data = torch.unsqueeze(data_set[0], dim=1).type(torch.FloatTensor)[:size]
+        label = data_set[1][:size]
+
         data = np.asarray(data)
         label = np.asarray(label)
-        return data, label
+        return data, label, size
