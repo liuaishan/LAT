@@ -115,10 +115,12 @@ def train_op(model):
 
             # test acc for validation set
             if step % 50 == 0:
+                model.eval()
                 test_output, last_layer = model(test_x)
                 pred_y = torch.max(test_output, 1)[1].cuda().data.cpu().squeeze().numpy()
                 accuracy = float((pred_y == test_y.data.cpu().numpy()).astype(int).sum()) / float(test_y.size(0))
                 print('Epoch: ', epoch, '| train loss: %.4f' % loss.data.cpu().numpy(), '| test accuracy: %.2f' % accuracy)
+                model.train()
 
             # save model
             if step % 100 == 0:
@@ -128,11 +130,13 @@ def train_op(model):
                 else:
                     torch.save(model.state_dict(), args.model_path + 'naive_param.pkl')
 
-            # print batch-size predictions from test data
+            # print batch-size predictions from training data
+            model.eval()
             test_output, _ = model(b_x)
             pred_y = torch.max(test_output, 1)[1].cuda().data.cpu().numpy().squeeze()
             Accuracy = float((pred_y == b_y.data.cpu().numpy()).astype(int).sum()) / float(b_y.size(0))
             print('train loss: %.4f' % loss.data.cpu().numpy(), '| train accuracy: %.2f' % Accuracy)
+            model.train()
 
 def test_op(model):
     # get labels from a .p file
