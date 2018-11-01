@@ -1,11 +1,13 @@
 import torch 
 import torch.nn as nn
+from torch.autograd import Variable
 import torchvision
 import torchvision.transforms as transforms
 from torchvision.utils import save_image  
 from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy
+import pickle
 
 toImg = transforms.ToPILImage()
 
@@ -17,9 +19,9 @@ num_epochs = 5
 num_classes = 10
 batch_size = 100
 learning_rate = 0.01
-eps = 0.1
+eps = 0.3
 output_dir = './img/'
-# MNIST dataset set Download = True for the first time
+# MNIST dataset
 train_dataset = torchvision.datasets.MNIST(root='./data/',
                                            train=True, 
                                            transform=transforms.ToTensor(),
@@ -111,6 +113,8 @@ def test():
     
     model.train()
 
+'''# this function still has bugs
+
 def fgsm_generate():
     correct = 0
     total = 0
@@ -122,7 +126,7 @@ def fgsm_generate():
         outputs = model(images)
         loss = criterion(outputs,labels)
         
-        loss.backward()
+        #loss.backward()
         _,prediction = torch.max(outputs,1)
 
         #FGSM
@@ -138,8 +142,11 @@ def fgsm_generate():
     print('Before FGSM Test Accuracy on the 10000 test images: {} %'.format(100 * correct / total))
     print('After FGSM Test Accuracy on the 10000 test images : {} %'.format(100 * correct_adv / total))
             
+'''
 
-def generate():
+def fgsm():
+    model.eval()
+
     images_all = list()
     adv_all = list()
     correct = 0
@@ -147,32 +154,40 @@ def generate():
     correct_adv = 0
     total=0
     for images,labels in test_loader:
-        images, labels=images.to(device),labels.to(device)
-        #images=images.view(-1,28*28)
-        images.requires_grad_()
-        optimizer.zero_grad()
-        outputs=model(images)
-        loss=criterion(outputs,labels)
-        
-        loss.backward()
-        _,predictions=torch.max(outputs,1)
-        #FGSM
-        x_grad=torch.sign(images.grad)
-        x_adversarial=torch.clamp(images.detach()+eps*x_grad,0,1)
-        
-        _,adversarial_pred=torch.max(model(x_adversarial),1)
-        images_all.append([images.view(-1,28,28).detach().cpu(),labels])
-        adv_all.append([x_adversarial.view(-1,28,28).cpu(),adversarial_pred])
+        x = Variable(images, requires_grad = True).to(device)
+        y_true = Variable(labels, requires_grad = False).to(device)
 
-        correct+=(predictions==adversarial_pred).sum()
-        correct_cln += (predictions==labels).sum()
-        correct_adv += (adversarial_pred==labels).sum()
-        total+=len(predictions)
+        h = model(x)
+        _, predictions = torch.max(h,1)
+        correct_cln += (predictions == y_true).sum()
+        loss = criterion(h, y_true)
+        model.zero_grad()
+        if x.grad is not None:
+            x.grad.data.fill_(0)
+        loss.backward()
+        
+        #FGSM
+        #x.grad.sign_()   # change the grad with sign ?
+        x_adv = x.detach() + eps * torch.sign(x.grad)
+        x_adv = torch.clamp(x_adv,0,1)
+        
+        h_adv = model(x_adv)
+        _, predictions_adv = torch.max(h_adv,1)
+        correct_adv += (predictions_adv == labels).sum()
+
+        images_all.append([x.data.view(-1,28,28).detach().cpu(), labels])
+        adv_all.append([x_adv.data.view(-1,28,28).cpu(), predictions_adv])
+
+        correct += (predictions == predictions_adv).sum()
+        total += len(predictions)
+    
+    model.train()
+    error_rate = float(total-correct)*100/total
     print("Error Rate is ",float(total-correct)*100/total)
     print("Before FGSM the accuracy is",float(100*correct_cln)/total)
     print("After FGSM the accuracy is",float(100*correct_adv)/total)
 
-    return images_all, adv_all
+    return images_all, adv_all, error_rate
 
 def save(images_all, adv_all):
     #save adversarial examples
@@ -203,10 +218,19 @@ def display(images_all, adv_all):
     correct=(label==label_adv).sum()
     print("Batch Error rate ",float(total-correct)*100/total)
 
+def draw(error_rate = error_rate, ):
+
 
 #train()
 model.load_state_dict(torch.load('model.pth'))
 #test()
-images_all, adv_all = generate()
+images_all, adv_all, error_rate = fgsm()
 save(images_all, adv_all)
 #display(images_all, adv_all)
+
+
+with open('clean.p','wb') as f:
+	pickle.dump(images_all[0], f, pickle.HIGHEST_PROTOCOL)
+
+with open('eps_{}.p'.format(eps),'wb') as f:
+	pickle.dump(adv_all[0], f, pickle.HIGHEST_PROTOCOL)
