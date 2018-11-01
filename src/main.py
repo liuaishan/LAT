@@ -154,11 +154,12 @@ def test_op(model):
         shuffle=False,
         num_workers=2
     )
-
+    model.eval()
     test_output, _ = model(data)
     pred_y = torch.max(test_output, 1)[1].cuda().data.cpu().numpy().squeeze()
     Accuracy = float((pred_y == label.cpu().numpy()).astype(int).sum()) / float(label.size(0))
     print('test accuracy: %.2f' % Accuracy)
+    model.train()
 
 
 if __name__ == "__main__":
