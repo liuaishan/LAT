@@ -12,7 +12,7 @@ import torch.nn as nn
 from torch.nn import functional as F
 
 class LeNet(nn.Module):
-    def __init__(self, enable_lat, epsilon, pro_num, batch_size=64,  batch_norm=False, if_dropout=False, class_num = 10):
+    def __init__(self, enable_lat, epsilon, pro_num, batch_size=64, class_num = 10, batch_norm=False, if_dropout=False):
         # use the batch_norm after conv layer & use dropout after linear layer
         super(LeNet, self).__init__()
         self.train(True)
@@ -36,8 +36,10 @@ class LeNet(nn.Module):
         self.enble_lat = enable_lat
         self.epsilon = epsilon
         self.pro_num = pro_num
+
     def forward(self, x):
-                # layer 0
+
+        # layer 0
         self.input = x
         if (self.batch_norm):
             self.input = self.bn1(self.input)
@@ -104,3 +106,6 @@ class LeNet(nn.Module):
         logits = self.fc3(a4)
 
         return logits, a4
+
+
+
