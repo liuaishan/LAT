@@ -1,0 +1,7 @@
+基于LeNet.py中训练的naive模型的对抗样本生成。
+
+选取epsilon=0.1、0.2、0.3分别进行攻击。
+
+生成图片见image.zip
+
+.p文件见for_testing文件夹
