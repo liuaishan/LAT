@@ -40,6 +40,7 @@ class LeNet(nn.Module):
     def forward(self, x):
 
         # layer 0
+        x.retain_grad()     #used for generating the adversarial example
         self.input = x
         if (self.batch_norm):
             self.input = self.bn1(self.input)
