@@ -10,10 +10,15 @@ import torchvision.transforms as transforms
 from pathlib import Path
 import pickle
 
+# root of MNIST testset
+def return_data(dataroot):
+    test_dataset = torchvision.datasets.MNIST(root=dataroot,train=False, transform=transforms.ToTensor())
+    test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=False)
+    return test_loader
 
 def fgsm(model, criterion, eps=0.3):
+    test_loader = return_data(dataroot)
     model.eval()
-    
     images_all = list()
     adv_all = list()
     correct = 0
