@@ -16,6 +16,13 @@ from utils import read_data
 from LeNet import LeNet
 
 from torch.autograd import variable
+
+def get_bool(string):
+    if(string == 'False'):
+        return False
+    else:
+        return True
+
 # Training settings
 parser = argparse.ArgumentParser(description='lat implementation')
 parser.add_argument('--batchsize', type=int, default=64, help='training batch size')
@@ -24,8 +31,8 @@ parser.add_argument('--input_ch', type=int, default=3, help='input image channel
 parser.add_argument('--lr', type=float, default=0.0002, help='Learning Rate')
 parser.add_argument('--alpha', type=float, default=0.6, help='alpha')
 parser.add_argument('--epsilon', type=float, default=0.6, help='epsilon')
-parser.add_argument('--enable_lat', type=bool, default=True, help='enable lat')
-parser.add_argument('--test_flag', type=bool, default=True, help='test or train')
+parser.add_argument('--enable_lat', type=get_bool, default=True, help='enable lat')
+parser.add_argument('--test_flag', type=get_bool, default=True, help='test or train')
 #parser.add_argument('--test_data_path', default="C:\\Users\\SEELE\\Desktop\\LAT\\LAT\\example\\mnist\\fgsm_eps_0.5.p", help='test dataset path')
 #parser.add_argument('--train_data_path', default="C:\\Users\\SEELE\\Desktop\\LAT\\LAT\\MNIST\\", help='training dataset path')
 #parser.add_argument('--model_path', default="C:\\Users\\SEELE\\Desktop\\LAT\\LAT\\model\\new\\", help='number of classes')
@@ -33,8 +40,8 @@ parser.add_argument('--test_data_path', default="C:\\Users\\SEELE\\Desktop\\LAT\
 parser.add_argument('--train_data_path', default="C:\\Users\\SEELE\\Desktop\\LAT\\LAT\\MNIST\\", help='training dataset path')
 parser.add_argument('--model_path', default="C:\\Users\\SEELE\\Desktop\\LAT\\LAT\\model\\new\\", help='number of classes')
 parser.add_argument('--pro_num', type=int, default=8, help='progressive number')
-parser.add_argument('--batchnorm', default=True, help='batch normalization')
-parser.add_argument('--dropout', default=True, help='dropout')
+parser.add_argument('--batchnorm', type=get_bool, default=True, help='batch normalization')
+parser.add_argument('--dropout', type=get_bool, default=True, help='dropout')
 parser.add_argument('--dataset', default='mnist', help='data set')
 parser.add_argument('--model', default='lenet', help='target model')
 
@@ -198,3 +205,4 @@ if __name__ == "__main__":
         test_op(cnn)
     else:
         train_op(cnn)
+        
