@@ -9,6 +9,7 @@ import torchvision
 import torchvision.transforms as transforms
 from pathlib import Path
 import pickle
+import matplotlib.pyplot as plt
 
 # root of MNIST testset
 def return_data(dataroot):
@@ -45,12 +46,13 @@ def fgsm(model, criterion, eps=0.3):
         
         h_adv = model(x_adv)
         _, predictions_adv = torch.max(h_adv,1)
-        correct_adv += (predictions_adv == labels).sum()
+        correct_adv += (predictions_adv == y_true).sum()
 
         images_all.append([x.data.view(-1,28,28).detach().cpu(), labels])
-        adv_all.append([x_adv.data.view(-1,28,28).cpu(), predictions_adv])
+        #this part should store the X_adv + Y_true
+        adv_all.append([x_adv.data.view(-1,28,28).cpu(), labels])
 
-        correct += (predictions == predictions_adv).sum()
+        correct += (predictions_adv == predictions).sum()
         total += len(predictions)
     
     model.train()
@@ -63,6 +65,7 @@ def fgsm(model, criterion, eps=0.3):
     return images_all, adv_all, error_rate
 
 def save(images_all, adv_all):
+    toImg = transforms.ToPILImage()
     #save adversarial examples
     image, label = images_all[0]
     image_adv, label_adv = adv_all[0]
