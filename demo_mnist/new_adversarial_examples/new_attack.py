@@ -17,17 +17,8 @@ import math
 
 parser = argparse.ArgumentParser(description='lat implementation')
 parser.add_argument('--batchsize', type=int, default=64, help='training batch size')
-parser.add_argument('--epoch', type=int, default=2, help='number of epochs to train for')
-parser.add_argument('--input_ch', type=int, default=3, help='input image channels')
-parser.add_argument('--lr', type=float, default=0.0002, help='Learning Rate')
-parser.add_argument('--alpha', type=float, default=0.6, help='alpha')
-parser.add_argument('--epsilon', type=float, default=0.6, help='epsilon')
-parser.add_argument('--enable_lat', type=bool, default=False, help='enable lat')
-parser.add_argument('--test_flag', type=bool, default=False, help='test or train')
-parser.add_argument('--test_data_path', default=".\\test\\eps_0.5.p", help='test dataset path')
 parser.add_argument('--train_data_path', default=".\\data\\", help='training dataset path')
 parser.add_argument('--model_path', default=".\\model\\", help='number of classes')
-parser.add_argument('--pro_num', type=int, default=8, help='progressive number')
 parser.add_argument('--batchnorm', default=True, help='batch normalization')
 parser.add_argument('--dropout', default=True, help='dropout')
 parser.add_argument('--dataset', default='mnist', help='data set')
@@ -37,6 +28,7 @@ args = parser.parse_args()
 
 print(args)
 
+#generate adversarial examples
 def fgsm(model, criterion, eps=0.3):
     model.eval()
     
@@ -87,7 +79,8 @@ def fgsm(model, criterion, eps=0.3):
     print("After FGSM the accuracy is", float(100*correct_adv)/total)
     print(len(adv_all))
     return images_all, adv_all
-'''
+
+#save adversarial and original images
 def save(images_all, adv_all,eps):
     toImg = transforms.ToPILImage()
     #save adversarial examples
@@ -101,26 +94,10 @@ def save(images_all, adv_all,eps):
             im.save(Path('.\\image\\clean\\eps_{}\\{}.jpg'.format(eps,j)))
             im = toImg(image_adv[j].unsqueeze(0))
             im.save(Path('.\\image\\adver\\eps_{}\\{}.jpg'.format(eps,j)))
-'''
 
-def display(images_all, adv_all):
-    # display a batch adv
-    curr, label = images_all[0]
-    curr_adv, label_adv = adv_all[0]
-    disp_batch = 10
-    for a in range(disp_batch):
-        plt.figure()
-        plt.subplot(121)
-        plt.title('Original Label: {}'.format(label[a].cpu().numpy()),loc ='left')
-        plt.imshow(curr[a].numpy(),cmap='gray')
-        plt.subplot(122)
-        plt.title('Adv Label : {}'.format(label_adv[a].cpu().numpy()),loc ='left')
-        plt.imshow(curr_adv[a].numpy(),cmap='gray')
-        plt.show()
-    total = batch_size
-    correct = (label==label_adv).sum()
-    print("Batch Error rate ",float(total-correct)*100/total)
-'''
+
+
+#save adversarial example into .p file
 def save_data(images_all, adv_all,eps):
     lenth = len(adv_all)
     X = adv_all[0][0]
@@ -134,9 +111,9 @@ def save_data(images_all, adv_all,eps):
     print(Y.size())
     with open('eps_{}.p'.format(eps),'wb') as f:
         pickle.dump([X,Y], f, pickle.HIGHEST_PROTOCOL)	
-'''
+
+#save adversarial example mixed with original data into .p file
 #alpha : the proportion of adversarial examples
-#batch_num = total_num/batch_size
 def save_mixed_example(alpha,images_all,adv_all,eps,batch_size,total_num):
     adv_size = math.floor(batch_size * alpha)
     adv_x = adv_all[0][0][0:adv_size]
@@ -167,9 +144,9 @@ def save_mixed_example(alpha,images_all,adv_all,eps,batch_size,total_num):
 if __name__ == "__main__":
     eps = 0.3
     
-    model = LeNet(enable_lat=args.enable_lat,
-                    epsilon=args.epsilon,
-                    pro_num=args.pro_num,
+    model = LeNet(enable_lat= False,
+                    epsilon= 0,
+                    pro_num= 1,
                     batch_size=args.batchsize,
                     batch_norm=args.batchnorm,
                     if_dropout=args.dropout).cuda()
