@@ -10,102 +10,227 @@ import torchvision.transforms as transforms
 from pathlib import Path
 import pickle
 import matplotlib.pyplot as plt
+import numpy as np 
+import pickle
+import os
 
-# root of MNIST testset
-def return_data(dataroot):
-    test_dataset = torchvision.datasets.MNIST(root=dataroot,train=False, transform=transforms.ToTensor())
-    test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=False)
-    return test_loader
+class Attack():
+    def __init__(self, dataroot, dataset, batch_size, target_model, criterion, epsilon=0.2, alpha=0.03, iteration=1):
+        self.dataroot = dataroot
+        self.dataset = dataset
+        self.batch_size = batch_size
+        self.model = target_model
+        self.criterion = criterion
+        self.epsilon = epsilon
+        self.alpha = alpha
+        self.iteration = iteration
 
-def fgsm(model, criterion, eps=0.3):
-    test_loader = return_data(dataroot)
-    model.eval()
-    images_all = list()
-    adv_all = list()
-    correct = 0
-    correct_cln = 0
-    correct_adv = 0
-    total = 0 
-    for images, labels in test_loader:
-        x = Variable(images, requires_grad = True)
-        y_true = Variable(labels, requires_grad = False)
+    # root of MNIST/CIFAR-10 testset
+    def return_data(self):
+        if self.dataset == 'mnist':
+            test_dataset = torchvision.datasets.MNIST(root=self.dataroot,train=False, transform=transforms.ToTensor())
+        elif self.dataset == 'cifar10':
+            test_dataset = torchvision.datasets.CIFAR10(root=self.dataroot,train=False, transform=transforms.ToTensor())
+        test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=self.batch_size, shuffle=False)
+        return test_loader
 
-        h = model(x)
-        _, predictions = torch.max(h,1)
-        correct_cln += (predictions == y_true).sum()
-        loss = criterion(h, y_true)
-        model.zero_grad()
-        if x.grad is not None:
-            x.grad.data.fill_(0)
-        loss.backward()
+    def fgsm(self):
+        test_loader = return_data(self.dataroot, self.dataset, self.batch_size)
+        self.model.eval()
+
+        correct = 0
+        correct_cln = 0
+        correct_adv = 0
+        total = 0 
+        for images, labels in test_loader:
+            x = Variable(images, requires_grad = True)
+            y_true = Variable(labels, requires_grad = False)
+
+            h = self.model(x)
+            _, predictions = torch.max(h,1)
+            correct_cln += (predictions == y_true).sum()
+            loss = self.criterion(h, y_true)
+            self.model.zero_grad()
+            if x.grad is not None:
+                x.grad.data.fill_(0)
+            loss.backward()
+            
+            #FGSM
+            #x.grad.sign_()   # change the grad with sign ?
+            x_adv = x.detach() + self.epsilon * torch.sign(x.grad)
+            x_adv = torch.clamp(x_adv,0,1)
+            
+            h_adv = self.model(x_adv)
+            _, predictions_adv = torch.max(h_adv,1)
+            correct_adv += (predictions_adv == y_true).sum()
+            #print(x.data.size(),x_adv.data.size(),labels.size())
+            if i == 0:
+                test_data_cln = x.data.detach().cpu()
+                test_data_adv = x_adv.data.cpu()
+                test_label = labels
+                test_label_adv = predictions_adv
+            else:
+                test_data_cln = torch.cat([test_data_cln, x.data.detach().cpu()],0)
+                test_data_adv = torch.cat([test_data_adv, x_adv.data.detach().cpu()],0)
+                test_label = torch.cat([test_label, labels],0)
+                test_label_adv = torch.cat([test_label_adv, labels],0)
+
+            #print(test_data_cln.size(),test_data_adv.size(),test_label.size())
+            images_all.append([x.data.view(-1,28,28).detach().cpu(), labels])
+            #this part should store the X_adv + Y_true
+            adv_all.append([x_adv.data.view(-1,28,28).cpu(), labels])
+
+            correct += (predictions_adv == predictions).sum()
+            total += len(predictions)
         
-        #FGSM
-        #x.grad.sign_()   # change the grad with sign ?
-        x_adv = x.detach() + eps * torch.sign(x.grad)
-        x_adv = torch.clamp(x_adv,0,1)
+        self.model.train()
         
-        h_adv = model(x_adv)
-        _, predictions_adv = torch.max(h_adv,1)
-        correct_adv += (predictions_adv == y_true).sum()
+        error_rate = float(total-correct)*100/total
+        print("Error Rate is ", float(total-correct)*100/total)
+        print("Before FGSM the accuracy is", float(100*correct_cln)/total)
+        print("After FGSM the accuracy is", float(100*correct_adv)/total)
 
-        images_all.append([x.data.view(-1,28,28).detach().cpu(), labels])
-        #this part should store the X_adv + Y_true
-        adv_all.append([x_adv.data.view(-1,28,28).cpu(), labels])
+        return test_data_cln, test_data_adv, test_label, test_label_adv
+# MNIST: test_data_cln , torch.Size([10000, 1, 28, 28]) ; test_label, torch.Size([10000])
 
-        correct += (predictions_adv == predictions).sum()
-        total += len(predictions)
-    
-    model.train()
-    
-    error_rate = float(total-correct)*100/total
-    print("Error Rate is ", float(total-correct)*100/total)
-    print("Before FGSM the accuracy is", float(100*correct_cln)/total)
-    print("After FGSM the accuracy is", float(100*correct_adv)/total)
+    def i_fgsm(self):
+        self.model.eval()
 
-    return images_all, adv_all, error_rate
+        correct = 0
+        correct_cln = 0
+        correct_adv = 0
+        total = 0
+        for i,(images,labels) in enumerate(test_loader):
+            x = Variable(images, requires_grad = True)
+            y_true = Variable(labels, requires_grad = False)
+            x_adv = Variable(x.data, requires_grad=True)
 
-def save(images_all, adv_all):
-    toImg = transforms.ToPILImage()
+            h = model(x)
+            _, predictions = torch.max(h,1)
+            correct_cln += (predictions == labels).sum()
+
+            for j in range(0, iteration):
+                h_adv = self.model(x_adv)
+
+                loss = self.criterion(h_adv, y_true)
+                self.model.zero_grad()
+                if x_adv.grad is not None:
+                    x_adv.grad.data.fill_(0)
+                loss.backward()
+                
+                #I-FGSM
+                #x_adv.grad.sign_()   # change the grad with sign ?
+                #print(type(x_adv.grad),x_adv.grad.size())
+                x_adv = x_adv.detach() + self.alpha * torch.sign(x_adv.grad)
+                # according to the paper of Kurakin:
+                x_adv = torch.where(x_adv > x+self.epsilon, x+self.epsilon, x_adv)
+                x_adv = torch.clamp(x_adv, 0, 1)
+                x_adv = torch.where(x_adv < x-self.epsilon, x-self.epsilon, x_adv)
+                x_adv = torch.clamp(x_adv, 0, 1)
+                x_adv = Variable(x_adv.data, requires_grad=True)
+
+            h_adv = self.model(x_adv)
+            _, predictions_adv = torch.max(h_adv,1)
+            correct_adv += (predictions_adv == labels).sum()
+
+            #print(x.data.size(),x_adv.data.size(),labels.size())
+            if i == 0:
+                test_data_cln = x.data.detach().cpu()
+                test_data_adv = x_adv.data.cpu()
+                test_label = labels
+                test_label_adv = predictions_adv
+            else:
+                test_data_cln = torch.cat([test_data_cln, x.data.detach().cpu()],0)
+                test_data_adv = torch.cat([test_data_adv, x_adv.data.detach().cpu()],0)
+                test_label = torch.cat([test_label, labels],0)
+                test_label_adv = torch.cat([test_label_adv, labels],0)
+
+            #print(test_data_cln.size(),test_data_adv.size(),test_label.size())
+
+            correct += (predictions == predictions_adv).sum()
+            total += len(predictions)
+        
+        self.model.train()
+        error_rate = float(total-correct)*100/total
+        print("Error Rate is ",float(total-correct)*100/total)
+        print("Before I-FGSM the accuracy is",float(100*correct_cln)/total)
+        print("After I-FGSM the accuracy is",float(100*correct_adv)/total)
+
+        return test_data_cln, test_data_adv, test_label, test_label_adv 
+
+def save(test_data_cln, test_data_adv):
     #save adversarial examples
-    image, label = images_all[0]
-    image_adv, label_adv = adv_all[0]
+    image = test_data_cln
+    image_adv = test_data_adv
     tot = len(image)
     for i in range(0, tot):
-        im = toImg(image[i].unsqueeze(0))
+        print(image[i].size())
+        im = toImg(image[i])
+        im.show()
         im.save(Path('img/eps_{}/{}_clean.jpg'.format(eps,i)))
-        im = toImg(image_adv[i].unsqueeze(0))
+        im = toImg(image_adv[i])
+        im.show()
         im.save(Path('img/eps_{}/{}_adver.jpg'.format(eps,i)))
 
-def display(images_all, adv_all):
+def display(test_data_cln, test_data_adv, test_label, test_label_adv):
     # display a batch adv
-    curr, label = images_all[0]
-    curr_adv, label_adv = adv_all[0]
+    curr = test_data_cln
+    curr_adv = test_data_adv
+    label = test_label
+    label_adv = test_label_adv
     disp_batch = 10
     for a in range(disp_batch):
+        b = a + disp_batch 
         plt.figure()
         plt.subplot(121)
         plt.title('Original Label: {}'.format(label[a].cpu().numpy()),loc ='left')
-        plt.imshow(curr[a].numpy(),cmap='gray')
+        plt.imshow(curr[a].squeeze().numpy(),cmap='gray')
         plt.subplot(122)
         plt.title('Adv Label : {}'.format(label_adv[a].cpu().numpy()),loc ='left')
-        plt.imshow(curr_adv[a].numpy(),cmap='gray')
+        plt.imshow(curr_adv[a].squeeze().numpy(),cmap='gray')
         plt.show()
-    total = batch_size
-    correct = (label==label_adv).sum()
-    print("Batch Error rate ",float(total-correct)*100/total)
+
+
+def save_data_label(test_data_cln, test_data_adv, test_label):
+    with open('test_data_cln.p','wb') as f:
+        pickle.dump(test_data_cln, f, pickle.HIGHEST_PROTOCOL)
+
+    with open('test_adv(eps_{}).p'.format(eps),'wb') as f:
+        pickle.dump(test_data_adv, f, pickle.HIGHEST_PROTOCOL)
+
+    with open('test_label.p'.format(eps),'wb') as f:
+        pickle.dump(test_label, f, pickle.HIGHEST_PROTOCOL)
+
 
 if __name__ == "__main__":
-    eps = 0.3
-    # Device configuration
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    '''
-    model = LeNet(num_classes).to(device)
-    criterion = nn.CrossEntropyLoss()
-    '''
-    #train()
-    model.load_state_dict(torch.load('model.pth'))
-    #test()
-    images_all, adv_all, error_rate = fgsm(model,criterion,eps)
+
+    device_id = 3
+    torch.cuda.set_device(device_id)
+    from LeNet import *
+    from utils import *
+    #model.load_state_dict(torch.load('model.pkl'))
+    net = LeNet(enable_lat = False,
+                epsilon = 0.6,
+                pro_num = 7,
+                batch_size = 64,
+                class_num = 10,
+                ).cuda()
+    # epsilon in LeNet doesn't equal to Attack
+    attack = Attack(dataroot = '../data/',
+                    dataset  = 'mnist',
+                    batch_size = 64,
+                    target_model = net,
+                    criterion = nn.CrossEntropyLoss(),
+                    epsilon = 0.2,
+                    alpha = 0.03,
+                    iteration = 6)
+    
+    #test_data_cln, test_data_adv, test_label,test_label_adv = attack.fgsm()
+    test_data_cln, test_data_adv, test_label, test_label_adv = attack.i_fgsm()
+    #display(test_data_cln, test_data_adv, test_label, test_label_adv)
+    #save(test_data_cln, test_data_adv)
+    save_data_label(test_data_cln, test_data_adv, test_label)
+    test_data, test_label, size = read_data_label('./test_data_cln.p','./test_label.p')
 
 
 

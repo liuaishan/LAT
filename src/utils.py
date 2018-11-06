@@ -35,3 +35,17 @@ def read_data(file_path):
         data = np.asarray(data)
         label = np.asarray(label)
         return data, label, size
+
+def read_data_label(data_path, label_path):
+
+    if not os.path.exists(data_path):
+        return None, None, 0
+
+    with open(data_path, 'rb') as fr:
+        test_data = pickle.load(fr)
+        size = len(test_data)
+    with open(label_path, 'rb') as fr:
+        test_label = pickle.load(fr)
+    return test_data, test_label, size
+
+

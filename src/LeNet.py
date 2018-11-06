@@ -6,7 +6,7 @@
 @desc:
 '''
 
-from torch.autograd import variable
+from torch.autograd import Variable
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
@@ -107,6 +107,5 @@ class LeNet(nn.Module):
         logits = self.fc3(a4)
 
         return logits, a4
-
 
 

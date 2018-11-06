@@ -14,6 +14,7 @@ import torch.utils.data as Data
 import os
 from utils import read_data
 from LeNet import LeNet
+from ResNet import *
 
 from torch.autograd import variable
 
@@ -43,7 +44,7 @@ parser.add_argument('--pro_num', type=int, default=8, help='progressive number')
 parser.add_argument('--batchnorm', type=get_bool, default=True, help='batch normalization')
 parser.add_argument('--dropout', type=get_bool, default=True, help='dropout')
 parser.add_argument('--dataset', default='mnist', help='data set')
-parser.add_argument('--model', default='lenet', help='target model')
+parser.add_argument('--model', default='lenet', help='target model, [lenet, resnet, vgg, ...]')
 
 args = parser.parse_args()
 
@@ -63,11 +64,25 @@ def train_op(model):
             root=args.train_data_path,
             train=False)
 
+    if args.dataset == 'cifar10':
+        train_data = torchvision.datasets.CIFAR10(
+            root=args.train_data_path,
+            train=True,
+            transform=torchvision.transforms.ToTensor(),
+            download=False
+        )
+        test_data = torchvision.datasets.CIFAR10(
+            root=args.train_data_path,
+            train=False)
+
     train_loader = Data.DataLoader(dataset=train_data, batch_size=args.batchsize, shuffle=True)
 
     if args.dataset == 'mnist':
         test_x = torch.unsqueeze(test_data.test_data, dim=1).type(torch.FloatTensor)[:args.batchsize].cuda() / 255.
-    test_y = test_data.test_labels[:args.batchsize].cuda()
+        test_y = test_data.test_labels[:args.batchsize].cuda()
+    if args.dataset == 'cifar10':
+        test_x = torch.Tensor(test_data.test_data).view(-1,3,32,32)[:args.batchsize].cuda() / 255.
+        test_y = torch.Tensor(test_data.test_labels)[:args.batchsize].cuda()
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     loss_func = nn.CrossEntropyLoss()
@@ -117,7 +132,39 @@ def train_op(model):
                         # add or not???? grad of input x
                         # temp = torch.clamp(iter_input_x.detach() + EPSILON * torch.sign(iter_input_x.grad),max=1,min=0)
                         # iter_input_x = iter_input_x.add(temp)
-
+                if args.model == 'resnet':
+                    if args.enable_lat:
+                        model.z0_reg.data = args.alpha * model.z0_reg.data + \
+                                          torch.sign(model.z0.grad)/torch.norm(model.z0.grad, 2)
+                        for i in range(0,3):
+                            model.layer1[i].z1_reg.data = args.alpha * model.z1_reg.data + \
+                                          torch.sign(model.z1.grad)/torch.norm(model.z1.grad, 2)
+                            model.layer1[i].z2_reg.data = args.alpha * model.z2_reg.data + \
+                                          torch.sign(model.z2.grad)/torch.norm(model.z2.grad, 2)
+                            model.layer1[i].z3_reg.data = args.alpha * model.z3_reg.data + \
+                                          torch.sign(model.z3.grad)/torch.norm(model.z3.grad, 2)
+                            model.layer1[i].z4_reg.data = args.alpha * model.z4_reg.data + \
+                                          torch.sign(model.z4.grad)/torch.norm(model.z4.grad, 2)
+                        for j in range(0,4):
+                            model.layer2[j].z1_reg.data = args.alpha * model.z1_reg.data + \
+                                          torch.sign(model.z1.grad)/torch.norm(model.z1.grad, 2)
+                            model.layer2[j].z2_reg.data = args.alpha * model.z2_reg.data + \
+                                          torch.sign(model.z2.grad)/torch.norm(model.z2.grad, 2)
+                            model.layer2[j].z3_reg.data = args.alpha * model.z3_reg.data + \
+                                          torch.sign(model.z3.grad)/torch.norm(model.z3.grad, 2)
+                            model.layer2[j].z4_reg.data = args.alpha * model.z4_reg.data + \
+                                          torch.sign(model.z4.grad)/torch.norm(model.z4.grad, 2)
+                        for k in range(0,6):
+                            model.layer3[k].z1_reg.data = args.alpha * model.z1_reg.data + \
+                                          torch.sign(model.z1.grad)/torch.norm(model.z1.grad, 2)
+                            model.layer3[k].z2_reg.data = args.alpha * model.z2_reg.data + \
+                                          torch.sign(model.z2.grad)/torch.norm(model.z2.grad, 2)
+                            model.layer3[k].z3_reg.data = args.alpha * model.z3_reg.data + \
+                                          torch.sign(model.z3.grad)/torch.norm(model.z3.grad, 2)
+                            model.layer3[k].z4_reg.data = args.alpha * model.z4_reg.data + \
+                                          torch.sign(model.z4.grad)/torch.norm(model.z4.grad, 2)
+                        model.x_reg.data = args.alpha * model.x_reg.data + \
+                                          torch.sign(model.input.grad)/torch.norm(model.input.grad, 2)
 
 
             # test acc for validation set
@@ -146,18 +193,21 @@ def train_op(model):
             model.train()
 
 def test_op(model):
-    # get labels from a .p file
-    data, label, size = read_data(args.test_data_path)
+    # get test_data , test_label from .p file
+    test_data, test_label, size = read_data(args.test_data_path)
 
     if size == 0:
         print("reading data failed.")
         return
-
+'''
     data = torch.from_numpy(data).cuda()
     label = torch.from_numpy(label).cuda()
-
+'''
+    test_data = test_data.cuda()
+    test_label = test_label.cuda()
+    
     # create dataset
-    testing_set = Data.TensorDataset(data, label)
+    testing_set = Data.TensorDataset(test_data, test_label)
 
     testing_loader = Data.DataLoader(
         dataset=testing_set,
@@ -192,6 +242,11 @@ if __name__ == "__main__":
                     batch_size=args.batchsize,
                     batch_norm=args.batchnorm,
                     if_dropout=args.dropout)
+    if args.model == 'resnet':
+        cnn = ResNet50(enable_lat=args.enable_lat,
+                    epsilon=args.epsilon,
+                    pro_num=args.pro_num,
+                    batch_size=args.batchsize)
 
     cnn.cuda()
 
