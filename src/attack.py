@@ -24,7 +24,7 @@ class Attack():
         self.epsilon = epsilon
         self.alpha = alpha
         self.iteration = iteration
-
+        
     # root of MNIST/CIFAR-10 testset
     def return_data(self):
         if self.dataset == 'mnist':
@@ -35,14 +35,14 @@ class Attack():
         return test_loader
 
     def fgsm(self):
-        test_loader = return_data(self.dataroot, self.dataset, self.batch_size)
+        test_loader = self.return_data()
         self.model.eval()
 
         correct = 0
         correct_cln = 0
         correct_adv = 0
         total = 0 
-        for images, labels in test_loader:
+        for i, (images, labels) in enumerate(test_loader):
             x = Variable(images, requires_grad = True)
             y_true = Variable(labels, requires_grad = False)
 
@@ -76,9 +76,6 @@ class Attack():
                 test_label_adv = torch.cat([test_label_adv, labels],0)
 
             #print(test_data_cln.size(),test_data_adv.size(),test_label.size())
-            images_all.append([x.data.view(-1,28,28).detach().cpu(), labels])
-            #this part should store the X_adv + Y_true
-            adv_all.append([x_adv.data.view(-1,28,28).cpu(), labels])
 
             correct += (predictions_adv == predictions).sum()
             total += len(predictions)
@@ -94,6 +91,7 @@ class Attack():
 # MNIST: test_data_cln , torch.Size([10000, 1, 28, 28]) ; test_label, torch.Size([10000])
 
     def i_fgsm(self):
+        test_loader = self.return_data()
         self.model.eval()
 
         correct = 0
@@ -105,7 +103,7 @@ class Attack():
             y_true = Variable(labels, requires_grad = False)
             x_adv = Variable(x.data, requires_grad=True)
 
-            h = model(x)
+            h = self.model(x)
             _, predictions = torch.max(h,1)
             correct_cln += (predictions == labels).sum()
 
@@ -167,10 +165,10 @@ def save(test_data_cln, test_data_adv):
         print(image[i].size())
         im = toImg(image[i])
         im.show()
-        im.save(Path('img/eps_{}/{}_clean.jpg'.format(eps,i)))
+        im.save(Path('./img/eps_{}/{}_clean.jpg'.format(eps,i)))
         im = toImg(image_adv[i])
         im.show()
-        im.save(Path('img/eps_{}/{}_adver.jpg'.format(eps,i)))
+        im.save(Path('./img/eps_{}/{}_adver.jpg'.format(eps,i)))
 
 def display(test_data_cln, test_data_adv, test_label, test_label_adv):
     # display a batch adv
@@ -192,45 +190,44 @@ def display(test_data_cln, test_data_adv, test_label, test_label_adv):
 
 
 def save_data_label(test_data_cln, test_data_adv, test_label):
-    with open('test_data_cln.p','wb') as f:
+    with open('./test/test_data_cln.p','wb') as f:
         pickle.dump(test_data_cln, f, pickle.HIGHEST_PROTOCOL)
 
-    with open('test_adv(eps_{}).p'.format(eps),'wb') as f:
+    with open('./test/test_adv(eps_{}).p'.format(eps),'wb') as f:
         pickle.dump(test_data_adv, f, pickle.HIGHEST_PROTOCOL)
 
-    with open('test_label.p'.format(eps),'wb') as f:
+    with open('./test/test_label.p','wb') as f:
         pickle.dump(test_label, f, pickle.HIGHEST_PROTOCOL)
 
 
 if __name__ == "__main__":
 
-    device_id = 3
+    device_id = 5
     torch.cuda.set_device(device_id)
-    from LeNet import *
-    from utils import *
-    #model.load_state_dict(torch.load('model.pkl'))
-    net = LeNet(enable_lat = False,
-                epsilon = 0.6,
-                pro_num = 7,
-                batch_size = 64,
-                class_num = 10,
-                ).cuda()
-    # epsilon in LeNet doesn't equal to Attack
-    attack = Attack(dataroot = '../data/',
-                    dataset  = 'mnist',
-                    batch_size = 64,
-                    target_model = net,
+    from ResNet import ResNet50
+    model = ResNet50(enable_lat = False,
+                     epsilon = 0.6,
+                     pro_num = 6,
+                     batch_size = 128,
+                     num_classes = 10
+                    )
+    model.load_state_dict(torch.load("/home/dsg/yuhang/src/model/lat_param.pkl"))
+    # epsilon in net doesn't equal to Attack
+    attack = Attack(dataroot = "/home/dsg/data/cifar10/cifar_10_pytorch/",
+                    dataset  = 'cifar10',
+                    batch_size = 128,
+                    target_model = model,
                     criterion = nn.CrossEntropyLoss(),
-                    epsilon = 0.2,
-                    alpha = 0.03,
+                    epsilon = 12,
+                    alpha = 1,
                     iteration = 6)
-    
-    #test_data_cln, test_data_adv, test_label,test_label_adv = attack.fgsm()
-    test_data_cln, test_data_adv, test_label, test_label_adv = attack.i_fgsm()
+    eps = attack.epsilon
+    test_data_cln, test_data_adv, test_label,test_label_adv = attack.fgsm()
+    #test_data_cln, test_data_adv, test_label, test_label_adv = attack.i_fgsm()
     #display(test_data_cln, test_data_adv, test_label, test_label_adv)
     #save(test_data_cln, test_data_adv)
     save_data_label(test_data_cln, test_data_adv, test_label)
-    test_data, test_label, size = read_data_label('./test_data_cln.p','./test_label.p')
+    #test_data, test_label, size = read_data_label('./test_data_cln.p','./test_label.p')
 
 
 
