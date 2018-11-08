@@ -93,27 +93,13 @@ class ResNet50(nn.Module):
 
         #print('layer 1')       # 1*ConvBlock + 2*BasicBlock
         #out = self.layer1(out)
-        a1_0 = self.layer1[0](a0  )
-        a1_1 = self.layer1[1](a1_0)
-        a1_2 = self.layer1[2](a1_1)
-        a1 = a1_2
+        a1 = self.layer1(a0)
         #print('layer 2')       # 1*ConvBlock + 3*BasicBlock
         #out = self.layer2(out)
-        a2_0 = self.layer2[0](a1  )
-        a2_1 = self.layer2[1](a2_0)
-        a2_2 = self.layer2[2](a2_1)
-        a2_3 = self.layer2[3](a2_2)
-        a2 = a2_3
+        a2 = self.layer2(a1)
         #print('layer 3')       # 1*ConvBlock + 5*BasicBlock
         #out = self.layer3(out)
-        a3_0 = self.layer3[0](a2  )
-        a3_1 = self.layer3[1](a3_0)
-        a3_2 = self.layer3[2](a3_1)
-        a3_3 = self.layer3[3](a3_2)
-        a3_4 = self.layer3[4](a3_3)
-        a3_5 = self.layer3[5](a3_4)
-        a3 = a3_5
-
+        a3 = self.layer3(a2)
         #out = F.avg_pool2d(out, 8)
         p3 = F.avg_pool2d(a3, 8)
         #out = out.view(out.size(0), -1)    # change view before FC 
@@ -225,7 +211,7 @@ class Bottleneck(nn.Module):
             else:
                 z4_add = self.z4    
         else:
-            z4_add = 0
+            z4_add = x
         z4_sc = z4_add + a3     # shortcut(x) + (conv)(bn)*3(x) = ConvBlock(x)
         #out = F.relu(out)
         a4 = F.relu(z4_sc)

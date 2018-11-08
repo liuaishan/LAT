@@ -226,20 +226,35 @@ def test_op(model):
 
     testing_loader = Data.DataLoader(
         dataset=testing_set,
-        batch_size=size,
+        batch_size=args.batchsize, # without minibatch cuda will out of memory
         shuffle=False,
-        num_workers=2
+        #num_workers=2
     )
+    # Test the model
     model.eval()
-    test_output = model(data)
+    correct = 0
+    total = 0
+    for x, y in testing_loader:
+        x = x.cuda()
+        y = y.cuda()
+        h = model(x)
+        _, predicted = torch.max(h.data, 1)
+        total += y.size(0)
+        correct += (predicted == y).sum().item()
+
+    print('Accuracy of the model on the test images: {} %'.format(100 * correct / total))        
+
+    '''
+    model.eval()
+    test_output = model(test_data)
     pred_y = torch.max(test_output, 1)[1].cuda().data.cpu().numpy().squeeze()
-    Accuracy = float((pred_y == label.cpu().numpy()).astype(int).sum()) / float(label.size(0))
+    Accuracy = float((pred_y == test_label.cpu().numpy()).astype(int).sum()) / float(test_label.size(0))
     print('test accuracy: %.2f' % Accuracy)
     model.train()
-
+    '''
 
 if __name__ == "__main__":
-    torch.cuda.set_device(4) # use gpu-5
+    torch.cuda.set_device(6) # use gpu-5
     if args.enable_lat:
         real_model_path = args.model_path + "lat_param.pkl"
         print('loading the LAT model')

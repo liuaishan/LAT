@@ -63,7 +63,7 @@ class Attack():
             h_adv = self.model(x_adv)
             _, predictions_adv = torch.max(h_adv,1)
             correct_adv += (predictions_adv == y_true).sum()
-            #print(x.data.size(),x_adv.data.size(),labels.size())
+            print(x.data.size(),x_adv.data.size(),labels.size())
             if i == 0:
                 test_data_cln = x.data.detach().cpu()
                 test_data_adv = x_adv.data.cpu()
@@ -118,14 +118,14 @@ class Attack():
                 
                 #I-FGSM
                 #x_adv.grad.sign_()   # change the grad with sign ?
-                #print(type(x_adv.grad),x_adv.grad.size())
+                print(type(x_adv.grad),x_adv.grad.size())
                 x_adv = x_adv.detach() + self.alpha * torch.sign(x_adv.grad)
                 # according to the paper of Kurakin:
                 x_adv = torch.where(x_adv > x+self.epsilon, x+self.epsilon, x_adv)
                 x_adv = torch.clamp(x_adv, 0, 1)
                 x_adv = torch.where(x_adv < x-self.epsilon, x-self.epsilon, x_adv)
                 x_adv = torch.clamp(x_adv, 0, 1)
-                x_adv = Variable(x_adv.data, requires_grad=True)
+                x_adv = Variable(x_adv.data, requires_grad=True).cuda()
 
             h_adv = self.model(x_adv)
             _, predictions_adv = torch.max(h_adv,1)
@@ -172,6 +172,7 @@ def save(test_data_cln, test_data_adv):
 
 def display(test_data_cln, test_data_adv, test_label, test_label_adv):
     # display a batch adv
+    toPil = transforms.ToPILImage()
     curr = test_data_cln
     curr_adv = test_data_adv
     label = test_label
@@ -182,14 +183,14 @@ def display(test_data_cln, test_data_adv, test_label, test_label_adv):
         plt.figure()
         plt.subplot(121)
         plt.title('Original Label: {}'.format(label[a].cpu().numpy()),loc ='left')
-        plt.imshow(curr[a].squeeze().numpy(),cmap='gray')
+        plt.imshow(toPil(curr[a].cpu().clone().squeeze()))
         plt.subplot(122)
         plt.title('Adv Label : {}'.format(label_adv[a].cpu().numpy()),loc ='left')
-        plt.imshow(curr_adv[a].squeeze().numpy(),cmap='gray')
+        plt.imshow(toPil(curr_adv[a].cpu().clone().squeeze()))
         plt.show()
 
 
-def save_data_label(test_data_cln, test_data_adv, test_label):
+def save_data_label(test_data_cln, test_data_adv, test_label, test_label_adv):
     with open('./test/test_data_cln.p','wb') as f:
         pickle.dump(test_data_cln, f, pickle.HIGHEST_PROTOCOL)
 
@@ -198,6 +199,9 @@ def save_data_label(test_data_cln, test_data_adv, test_label):
 
     with open('./test/test_label.p','wb') as f:
         pickle.dump(test_label, f, pickle.HIGHEST_PROTOCOL)
+    
+    with open('./test/label_adv(eps_{}).p'.format(eps),'wb') as f:
+        pickle.dump(test_label_adv, f, pickle.HIGHEST_PROTOCOL)
 
 
 if __name__ == "__main__":
@@ -205,29 +209,38 @@ if __name__ == "__main__":
     device_id = 5
     torch.cuda.set_device(device_id)
     from ResNet import ResNet50
+    from utils import read_data_label 
     model = ResNet50(enable_lat = False,
                      epsilon = 0.6,
                      pro_num = 6,
                      batch_size = 128,
                      num_classes = 10
                     )
-    model.load_state_dict(torch.load("/home/dsg/yuhang/src/model/lat_param.pkl"))
+    model.load_state_dict(torch.load("/home/dsg/yuhang/src/model/naive_param.pkl"))
     # epsilon in net doesn't equal to Attack
     attack = Attack(dataroot = "/home/dsg/data/cifar10/cifar_10_pytorch/",
                     dataset  = 'cifar10',
-                    batch_size = 128,
+                    batch_size = 1000,
                     target_model = model,
                     criterion = nn.CrossEntropyLoss(),
-                    epsilon = 12,
-                    alpha = 1,
+                    epsilon = 0.03,
+                    alpha = 0.01,
                     iteration = 6)
     eps = attack.epsilon
-    test_data_cln, test_data_adv, test_label,test_label_adv = attack.fgsm()
-    #test_data_cln, test_data_adv, test_label, test_label_adv = attack.i_fgsm()
-    #display(test_data_cln, test_data_adv, test_label, test_label_adv)
-    #save(test_data_cln, test_data_adv)
-    save_data_label(test_data_cln, test_data_adv, test_label)
+    test_data_cln, test_data_adv, test_label, test_label_adv = attack.fgsm()
+    print(test_data_adv.size(),test_label.size())
     #test_data, test_label, size = read_data_label('./test_data_cln.p','./test_label.p')
+    #test_data_adv, test_label_adv, size = read_data_label('./test_data_cln.p','./test_label.p')
+    '''
+    test_loader = attack.return_data()
+    dataiter = iter(test_loader)
+    images,labels = dataiter.next()
+    print(images[0])
+    '''
+    #test_data_cln, test_data_adv, test_label, test_label_adv = attack.i_fgsm()
+    display(test_data_cln, test_data_adv, test_label, test_label_adv)
+    #save(test_data_cln, test_data_adv)
+    save_data_label(test_data_cln, test_data_adv, test_label, test_label_adv)
 
 
 
