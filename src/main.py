@@ -17,7 +17,7 @@ from utils import read_data_label
 from LeNet import LeNet
 from ResNet import *
 
-from torch.autograd import variable
+from torch.autograd import Variable
 
 def get_bool(string):
     if(string == 'False'):
@@ -99,8 +99,8 @@ def train_op(model):
                 args.pro_num = 1
             if not len(y) == args.batchsize:
                 continue
-            b_x = variable(x).cuda()
-            b_y = variable(y).cuda()
+            b_x = Variable(x).cuda()
+            b_y = Variable(y).cuda()
             # progressive process
             for iter in range(args.pro_num):
                 iter_input_x = b_x
@@ -141,36 +141,19 @@ def train_op(model):
                     if args.enable_lat:
                         model.z0_reg.data = args.alpha * model.z0_reg.data + \
                                           torch.sign(model.z0.grad)/torch.norm(model.z0.grad, 2)
-                        for i in range(0,3):
-                            model.layer1[i].z1_reg.data = args.alpha * model.layer1[i].z1_reg.data + \
-                                          torch.sign(model.layer1[i].z1.grad)/torch.norm(model.layer1[i].z1.grad, 2)
-                            model.layer1[i].z2_reg.data = args.alpha * model.layer1[i].z2_reg.data + \
-                                          torch.sign(model.layer1[i].z2.grad)/torch.norm(model.layer1[i].z2.grad, 2)
-                            model.layer1[i].z3_reg.data = args.alpha * model.layer1[i].z3_reg.data + \
-                                          torch.sign(model.layer1[i].z3.grad)/torch.norm(model.layer1[i].z3.grad, 2)
-                            if len(model.layer1[i].shortcut):
-                                model.layer1[i].z4_reg.data = args.alpha * model.layer1[i].z4_reg.data + \
-                                              torch.sign(model.layer1[i].z4.grad)/torch.norm(model.layer1[i].z4.grad, 2)
-                        for j in range(0,4):
-                            model.layer2[j].z1_reg.data = args.alpha * model.layer2[j].z1_reg.data + \
-                                          torch.sign(model.layer2[j].z1.grad)/torch.norm(model.layer2[j].z1.grad, 2)
-                            model.layer2[j].z2_reg.data = args.alpha * model.layer2[j].z2_reg.data + \
-                                          torch.sign(model.layer2[j].z2.grad)/torch.norm(model.layer2[j].z2.grad, 2)
-                            model.layer2[j].z3_reg.data = args.alpha * model.layer2[j].z3_reg.data + \
-                                          torch.sign(model.layer2[j].z3.grad)/torch.norm(model.layer2[j].z3.grad, 2)
-                            if len(model.layer2[j].shortcut):
-                                model.layer2[j].z4_reg.data = args.alpha * model.layer2[j].z4_reg.data + \
-                                              torch.sign(model.layer2[j].z4.grad)/torch.norm(model.layer2[j].z4.grad, 2)
-                        for k in range(0,6):
-                            model.layer3[k].z1_reg.data = args.alpha * model.layer3[k].z1_reg.data + \
-                                          torch.sign(model.layer3[k].z1.grad)/torch.norm(model.layer3[k].z1.grad, 2)
-                            model.layer3[k].z2_reg.data = args.alpha * model.layer3[k].z2_reg.data + \
-                                          torch.sign(model.layer3[k].z2.grad)/torch.norm(model.layer3[k].z2.grad, 2)
-                            model.layer3[k].z3_reg.data = args.alpha * model.layer3[k].z3_reg.data + \
-                                          torch.sign(model.layer3[k].z3.grad)/torch.norm(model.layer3[k].z3.grad, 2)
-                            if len(model.layer3[k].shortcut):
-                                model.layer3[k].z4_reg.data = args.alpha * model.layer3[k].z4_reg.data + \
-                                              torch.sign(model.layer3[k].z4.grad)/torch.norm(model.layer3[k].z4.grad, 2)
+                        net = nn.Sequential(model.layer1,model.layer2,model.layer3,model.layer4)
+                        #print(len(net),len(net[0]))
+                        for i in range(len(net)):
+                            for j in range(len(net[i])):
+                                net[i][j].z1_reg.data = args.alpha * net[i][j].z1_reg.data + \
+                                          torch.sign(net[i][j].z1.grad)/torch.norm(net[i][j].z1.grad, 2)
+                                net[i][j].z2_reg.data = args.alpha * net[i][j].z2_reg.data + \
+                                          torch.sign(net[i][j].z2.grad)/torch.norm(net[i][j].z2.grad, 2)
+                                net[i][j].z3_reg.data = args.alpha * net[i][j].z3_reg.data + \
+                                          torch.sign(net[i][j].z3.grad)/torch.norm(net[i][j].z3.grad, 2)
+                                if len(net[i][j].shortcut):
+                                    net[i][j].z4_reg.data = args.alpha * net[i][j].z4_reg.data + \
+                                              torch.sign(net[i][j].z4.grad)/torch.norm(net[i][j].z4.grad, 2)
                         model.x_reg.data = args.alpha * model.x_reg.data + \
                                           torch.sign(model.input.grad)/torch.norm(model.input.grad, 2)
 
@@ -196,7 +179,7 @@ def train_op(model):
             # print batch-size predictions from training data
             model.eval()
             test_output = model(b_x)
-            pred_y = torch.max(test_output, 1)[1].cuda().data.cpu().numpy().squeeze()
+            pred_y = torch.max(test_output, 1)[1].cuda().data.cpu().squeeze().numpy()
             Accuracy = float((pred_y == b_y.data.cpu().numpy()).astype(int).sum()) / float(b_y.size(0))
             print('train loss: %.4f' % loss.data.cpu().numpy(), '| train accuracy: %.2f' % Accuracy)
             model.train()
@@ -254,7 +237,7 @@ def test_op(model):
     '''
 
 if __name__ == "__main__":
-    torch.cuda.set_device(6) # use gpu-5
+    torch.cuda.set_device(5) # use gpu-5
     if args.enable_lat:
         real_model_path = args.model_path + "lat_param.pkl"
         print('loading the LAT model')

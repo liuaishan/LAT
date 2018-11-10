@@ -107,7 +107,7 @@ class Attack():
             _, predictions = torch.max(h,1)
             correct_cln += (predictions == labels).sum()
 
-            for j in range(0, iteration):
+            for j in range(0, self.iteration):
                 h_adv = self.model(x_adv)
 
                 loss = self.criterion(h_adv, y_true)
@@ -125,7 +125,7 @@ class Attack():
                 x_adv = torch.clamp(x_adv, 0, 1)
                 x_adv = torch.where(x_adv < x-self.epsilon, x-self.epsilon, x_adv)
                 x_adv = torch.clamp(x_adv, 0, 1)
-                x_adv = Variable(x_adv.data, requires_grad=True).cuda()
+                x_adv = Variable(x_adv.data, requires_grad=True)
 
             h_adv = self.model(x_adv)
             _, predictions_adv = torch.max(h_adv,1)
@@ -191,22 +191,22 @@ def display(test_data_cln, test_data_adv, test_label, test_label_adv):
 
 
 def save_data_label(test_data_cln, test_data_adv, test_label, test_label_adv):
-    with open('./test/test_data_cln.p','wb') as f:
+    with open('./test_ifgsm/test_data_cln.p','wb') as f:
         pickle.dump(test_data_cln, f, pickle.HIGHEST_PROTOCOL)
 
-    with open('./test/test_adv(eps_{}).p'.format(eps),'wb') as f:
+    with open('./test_ifgsm/test_adv(eps_{}).p'.format(eps),'wb') as f:
         pickle.dump(test_data_adv, f, pickle.HIGHEST_PROTOCOL)
 
-    with open('./test/test_label.p','wb') as f:
+    with open('./test_ifgsm/test_label.p','wb') as f:
         pickle.dump(test_label, f, pickle.HIGHEST_PROTOCOL)
     
-    with open('./test/label_adv(eps_{}).p'.format(eps),'wb') as f:
+    with open('./test_ifgsm/label_adv(eps_{}).p'.format(eps),'wb') as f:
         pickle.dump(test_label_adv, f, pickle.HIGHEST_PROTOCOL)
 
 
 if __name__ == "__main__":
 
-    device_id = 5
+    device_id = 6
     torch.cuda.set_device(device_id)
     from ResNet import ResNet50
     from utils import read_data_label 
@@ -216,7 +216,7 @@ if __name__ == "__main__":
                      batch_size = 128,
                      num_classes = 10
                     )
-    model.load_state_dict(torch.load("/home/dsg/yuhang/src/model/naive_param.pkl"))
+    model.load_state_dict(torch.load("./model/naive_param.pkl",map_location=lambda storage, loc:storage))
     # epsilon in net doesn't equal to Attack
     attack = Attack(dataroot = "/home/dsg/data/cifar10/cifar_10_pytorch/",
                     dataset  = 'cifar10',
@@ -224,10 +224,10 @@ if __name__ == "__main__":
                     target_model = model,
                     criterion = nn.CrossEntropyLoss(),
                     epsilon = 0.03,
-                    alpha = 0.01,
+                    alpha = 0.003,
                     iteration = 6)
     eps = attack.epsilon
-    test_data_cln, test_data_adv, test_label, test_label_adv = attack.fgsm()
+    test_data_cln, test_data_adv, test_label, test_label_adv = attack.i_fgsm()
     print(test_data_adv.size(),test_label.size())
     #test_data, test_label, size = read_data_label('./test_data_cln.p','./test_label.p')
     #test_data_adv, test_label_adv, size = read_data_label('./test_data_cln.p','./test_label.p')
