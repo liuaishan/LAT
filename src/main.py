@@ -1,7 +1,7 @@
 '''
 @author: liuaishan
 @contact: liuaishan@buaa.edu.cn
-@file: main.py.py
+@file: main.py
 @time: 2018/10/29 15:36
 @desc:
 '''
@@ -16,6 +16,7 @@ import os
 from utils import read_data_label
 from LeNet import LeNet
 from ResNet import *
+from VGG import *
 
 from torch.autograd import Variable
 
@@ -89,7 +90,7 @@ def train_op(model):
         test_x = torch.Tensor(test_data.test_data).view(-1,3,32,32)[:args.batchsize].cuda() / 255.
         test_y = torch.Tensor(test_data.test_labels)[:args.batchsize].cuda()
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=1e-4)
     loss_func = nn.CrossEntropyLoss()
     curr_lr = args.lr
     for epoch in range(args.epoch):
@@ -157,6 +158,12 @@ def train_op(model):
                         model.x_reg.data = args.alpha * model.x_reg.data + \
                                           torch.sign(model.input.grad)/torch.norm(model.input.grad, 2)
 
+                if args.model == 'vgg':
+                    if args.enable_lat:
+                        for i in range(1,13):  # z1 ~ z12
+                            exec('model.z{}_reg.data = args.alpha * model.z{}_reg.data + torch.sign(model.z{}.grad)/torch.norm(model.z{}.grad, 2)'.format(i,i,i,i))
+                        model.x_reg.data = args.alpha * model.x_reg.data + \
+                                            torch.sign(model.input.grad) / torch.norm(model.input.grad, 2)
 
             # test acc for validation set
             if step % 50 == 0:
@@ -177,18 +184,14 @@ def train_op(model):
 
             
             # print batch-size predictions from training data
-            model.eval()
+            #model.eval()
             test_output = model(b_x)
             pred_y = torch.max(test_output, 1)[1].cuda().data.cpu().squeeze().numpy()
             Accuracy = float((pred_y == b_y.data.cpu().numpy()).astype(int).sum()) / float(b_y.size(0))
             print('train loss: %.4f' % loss.data.cpu().numpy(), '| train accuracy: %.2f' % Accuracy)
-            model.train()
+            #model.train()
             
-        # Decay learning rate
-        if args.model == 'resnet' and (epoch+1) % 20 == 0:
-            curr_lr /= 3
-            for param_group in optimizer.param_groups:
-                param_group['lr'] = curr_lr
+
 
 def test_op(model):
     # get test_data , test_label from .p file
@@ -212,7 +215,9 @@ def test_op(model):
         batch_size=args.batchsize, # without minibatch cuda will out of memory
         shuffle=False,
         #num_workers=2
+        drop_last=True,
     )
+    
     # Test the model
     model.eval()
     correct = 0
@@ -225,8 +230,9 @@ def test_op(model):
         total += y.size(0)
         correct += (predicted == y).sum().item()
 
-    print('Accuracy of the model on the test images: {} %'.format(100 * correct / total))        
-
+    print('Accuracy of the model on the test images: {:.2f} %'.format(100 * correct / total))        
+    #print('now is {}'.format(type(model)))
+    model.train()
     '''
     model.eval()
     test_output = model(test_data)
@@ -237,17 +243,17 @@ def test_op(model):
     '''
 
 if __name__ == "__main__":
-    torch.cuda.set_device(5) # use gpu-5
+    torch.cuda.set_device(6) # use gpu-6
     if args.enable_lat:
         real_model_path = args.model_path + "lat_param.pkl"
         print('loading the LAT model')
     else:
         real_model_path = args.model_path + "naive_param.pkl"
         print('loading the naive model')
-
+    '''
     if args.test_flag:
         args.enable_lat = False
-
+    '''
     # switch models
     if args.model == 'lenet':
         cnn = LeNet(enable_lat=args.enable_lat,
@@ -256,12 +262,16 @@ if __name__ == "__main__":
                     batch_size=args.batchsize,
                     batch_norm=args.batchnorm,
                     if_dropout=args.dropout)
-    if args.model == 'resnet':
+    elif args.model == 'resnet':
         cnn = ResNet50(enable_lat=args.enable_lat,
                     epsilon=args.epsilon,
                     pro_num=args.pro_num,
                     batch_size=args.batchsize)
-
+    elif args.model == 'vgg':
+        cnn = VGG16(enable_lat=args.enable_lat,
+                    epsilon=args.epsilon,
+                    pro_num=args.pro_num,
+                    batch_size=args.batchsize)
     cnn.cuda()
 
     if os.path.exists(real_model_path):
