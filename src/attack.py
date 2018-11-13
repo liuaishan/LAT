@@ -73,7 +73,7 @@ class Attack():
                 test_data_cln = torch.cat([test_data_cln, x.data.detach().cpu()],0)
                 test_data_adv = torch.cat([test_data_adv, x_adv.data.detach().cpu()],0)
                 test_label = torch.cat([test_label, labels],0)
-                test_label_adv = torch.cat([test_label_adv, labels],0)
+                test_label_adv = torch.cat([test_label_adv, predictions_adv],0)
 
             #print(test_data_cln.size(),test_data_adv.size(),test_label.size())
 
@@ -141,7 +141,7 @@ class Attack():
                 test_data_cln = torch.cat([test_data_cln, x.data.detach().cpu()],0)
                 test_data_adv = torch.cat([test_data_adv, x_adv.data.detach().cpu()],0)
                 test_label = torch.cat([test_label, labels],0)
-                test_label_adv = torch.cat([test_label_adv, labels],0)
+                test_label_adv = torch.cat([test_label_adv, predictions_adv],0)
 
             #print(test_data_cln.size(),test_data_adv.size(),test_label.size())
 
