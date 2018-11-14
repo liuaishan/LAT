@@ -90,6 +90,61 @@ class Attack():
         return test_data_cln, test_data_adv, test_label, test_label_adv
 # MNIST: test_data_cln , torch.Size([10000, 1, 28, 28]) ; test_label, torch.Size([10000])
 
+    def tfgsm(self):
+        test_loader = self.return_data()
+        self.model.eval()
+
+        correct = 0
+        correct_cln = 0
+        correct_adv = 0
+        total = 0 
+        for i, (images, labels) in enumerate(test_loader):
+            x = Variable(images, requires_grad = True)
+            y_true = Variable(labels, requires_grad = False)
+
+            h = self.model(x)
+            _, predictions = torch.min(h,1)
+            correct_cln += (predictions == y_true).sum()
+            loss = self.criterion(h, predictions)
+            self.model.zero_grad()
+            if x.grad is not None:
+                x.grad.data.fill_(0)
+            loss.backward()
+            
+            #FGSM
+            #x.grad.sign_()   # change the grad with sign ?
+            x_adv = x.detach() - self.epsilon * torch.sign(x.grad)
+            x_adv = torch.clamp(x_adv,0,1)
+            
+            h_adv = self.model(x_adv)
+            _, predictions_adv = torch.max(h_adv,1)
+            correct_adv += (predictions_adv == y_true).sum()
+            print(x.data.size(),x_adv.data.size(),labels.size())
+            if i == 0:
+                test_data_cln = x.data.detach().cpu()
+                test_data_adv = x_adv.data.cpu()
+                test_label = labels
+                test_label_adv = predictions_adv
+            else:
+                test_data_cln = torch.cat([test_data_cln, x.data.detach().cpu()],0)
+                test_data_adv = torch.cat([test_data_adv, x_adv.data.detach().cpu()],0)
+                test_label = torch.cat([test_label, labels],0)
+                test_label_adv = torch.cat([test_label_adv, predictions_adv],0)
+
+            #print(test_data_cln.size(),test_data_adv.size(),test_label.size())
+
+            correct += (predictions_adv == predictions).sum()
+            total += len(predictions)
+        
+        self.model.train()
+        
+        error_rate = float(total-correct)*100/total
+        print("Error Rate is ", float(total-correct)*100/total)
+        print("Before FGSM the accuracy is", float(100*correct_cln)/total)
+        print("After FGSM the accuracy is", float(100*correct_adv)/total)
+
+        return test_data_cln, test_data_adv, test_label, test_label_adv
+
     def i_fgsm(self):
         test_loader = self.return_data()
         self.model.eval()
