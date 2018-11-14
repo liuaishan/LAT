@@ -31,7 +31,7 @@ parser.add_argument('--batchsize', type=int, default=64, help='training batch si
 parser.add_argument('--epoch', type=int, default=2, help='number of epochs to train for')
 parser.add_argument('--lr', type=float, default=0.0002, help='Learning Rate')
 parser.add_argument('--test_flag', type = get_bool,default=False, help='test or train')
-parser.add_argument('--test_data_path', default=".\\test\\eps_0.3.p", help='test dataset path')
+parser.add_argument('--test_data_path', default=".\\test\\eps_0.1.p", help='test dataset path')
 parser.add_argument('--val_data_path', default=".\\data\\", help='validation dataset path')
 parser.add_argument('--train_data_path', default=".\\data\\", help='training dataset path')
 parser.add_argument('--model_path', default=".\\model\\", help='number of classes')
@@ -79,13 +79,53 @@ def fgsm(model,criterion,batch_size,alpha,X_input,Y_input):
             adv_all_Y = torch.cat((adv_all_Y,Y),0)           
     
 
-    one_batch_X = torch.cat((adv_all_X,X_input.cuda()[adv_num:]),0)
-    one_batch_Y = torch.cat((adv_all_Y,Y_input.cuda()[adv_num:]),0)
+    one_batch_X = torch.cat((adv_all_X,X_input[adv_num:].clone().cuda()),0)
+    one_batch_Y = torch.cat((adv_all_Y,Y_input[adv_num:].clone().cuda()),0)
     model.train()
     return one_batch_X,one_batch_Y
 
+def tfgsm(model,criterion,batch_size,alpha,X_input,Y_input):
+    model.eval()
+    adv_num = floor(alpha * batch_size)
+    eps = []
+    for i in range(adv_num):
+        while(True):
+            rand_num = abs(normal(loc=0.0, scale=0.2, size=None))
+            if(rand_num <= 0.4):
+                eps.append(rand_num)
+                break
+    #print(eps)
+    #print(len(eps))
+    for  i in range(adv_num):
+        X = Variable(X_input[i].clone().expand(1,1,28,28), requires_grad = True).cuda()
+        Y = Variable(Y_input[i].clone().expand(1), requires_grad = False).cuda()
 
-def train_op(model,eps,adv_per):
+        h,_ = model(X)
+        _, predictions = torch.min(h,1)
+        loss = criterion(h, predictions)
+        model.zero_grad()
+        if X.grad is not None:
+            X.grad.data.fill_(0)
+        loss.backward()
+        
+        #FGSM
+        X_adv = X.detach() - eps[i] * torch.sign(X.grad)
+        X_adv = torch.clamp(X_adv,0,1)
+        
+        if(i == 0):
+            adv_all_X = X_adv.clone()
+            adv_all_Y = Y.clone()
+        else:
+            adv_all_X = torch.cat((adv_all_X,X_adv),0)
+            adv_all_Y = torch.cat((adv_all_Y,Y),0)           
+    
+
+    one_batch_X = torch.cat((adv_all_X,X_input[adv_num:].clone().cuda()),0)
+    one_batch_Y = torch.cat((adv_all_Y,Y_input[adv_num:].clone().cuda()),0)
+    model.train()
+    return one_batch_X,one_batch_Y
+
+def train_op(model,eps,adv_per,attack_method):
     # load training data and test set
     if args.dataset == 'mnist':
         train_data = torchvision.datasets.MNIST(
@@ -114,7 +154,13 @@ def train_op(model,eps,adv_per):
             if not len(y) == args.batchsize:
                 continue
             #mix adv and normal example together
-            x,y = fgsm(model,loss_func,args.batchsize,adv_per,x,y)
+            if(attack_method == 'tfgsm'):
+                x,y = tfgsm(model,loss_func,args.batchsize,adv_per,x,y)
+            elif(attack_method == 'fgsm'):
+                x,y = fgsm(model,loss_func,args.batchsize,adv_per,x,y)
+            else:
+                print('attack method is wrong')
+                os._exit(0)
             b_x = Variable(x).cuda()
             b_y = Variable(y).cuda()
             iter_input_x = b_x
@@ -139,7 +185,7 @@ def train_op(model,eps,adv_per):
             # save model
             if step % 100 == 0:
                 print('saving model...')
-                torch.save(model.state_dict(), args.model_path + 'new_adv_train_param_adv_per_%.2f' % adv_per + '.pkl')
+                torch.save(model.state_dict(), args.model_path + 'new_adv_train_param_adv_per_%.2f' % adv_per + '_' + attack_method +'.pkl')
 
             # print batch-size predictions from training data
             model.eval()
@@ -182,9 +228,10 @@ if __name__ == "__main__":
     #adv_per : percentage of adversarial_examples in training_set
     eps = 0.5
     adv_per = 0.5
+    attack_method = 'fgsm'
 
     #loading the adversarial_training_model
-    real_model_path = args.model_path + 'new_adv_train_param_adv_per_%.2f' % adv_per + '.pkl'
+    real_model_path = args.model_path + 'new_adv_train_param_adv_per_%.2f' % adv_per + '_' + attack_method +'.pkl'
 
     # switch models
     if args.model == 'lenet':
@@ -207,4 +254,4 @@ if __name__ == "__main__":
     if args.test_flag:
         test_op(cnn)
     else:
-        train_op(cnn,eps,adv_per)
+        train_op(cnn,eps,adv_per,attack_method)
