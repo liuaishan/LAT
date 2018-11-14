@@ -167,12 +167,13 @@ def train_op(model):
 
             # test acc for validation set
             if step % 50 == 0:
-                model.eval()
-                test_output = model(test_x)
-                pred_y = torch.max(test_output, 1)[1].cuda().data.cpu().squeeze().numpy()
-                accuracy = float((pred_y == test_y.data.cpu().numpy()).astype(int).sum()) / float(test_y.size(0))
-                print('Epoch: ', epoch, '| train loss: %.4f' % loss.data.cpu().numpy(), '| test accuracy in validation: %.2f' % accuracy)
-                model.train()
+                test_op(model)
+                #model.eval()
+                #test_output = model(test_x)
+                #pred_y = torch.max(test_output, 1)[1].cuda().data.cpu().squeeze().numpy()
+                #accuracy = float((pred_y == test_y.data.cpu().numpy()).astype(int).sum()) / float(test_y.size(0))
+                #print('Epoch: ', epoch, '| train loss: %.4f' % loss.data.cpu().numpy(), '| test accuracy in validation: %.2f' % accuracy)
+                #model.train()
 
             # save model
             if step % 100 == 0:
@@ -184,12 +185,14 @@ def train_op(model):
 
             
             # print batch-size predictions from training data
-            #model.eval()
-            test_output = model(b_x)
-            pred_y = torch.max(test_output, 1)[1].cuda().data.cpu().squeeze().numpy()
-            Accuracy = float((pred_y == b_y.data.cpu().numpy()).astype(int).sum()) / float(b_y.size(0))
-            print('train loss: %.4f' % loss.data.cpu().numpy(), '| train accuracy: %.2f' % Accuracy)
-            #model.train()
+            if step % 10 == 0:
+                #model.eval()
+                test_output = model(b_x)
+                train_loss = loss_func(test_output, b_y)
+                pred_y = torch.max(test_output, 1)[1].cuda().data.cpu().squeeze().numpy()
+                Accuracy = float((pred_y == b_y.data.cpu().numpy()).astype(int).sum()) / float(b_y.size(0))
+                print('train loss: %.4f' % train_loss.data.cpu().numpy(), '| train accuracy: %.2f' % Accuracy)
+                #model.train()
             
 
 
@@ -232,7 +235,7 @@ def test_op(model):
 
     print('Accuracy of the model on the test images: {:.2f} %'.format(100 * correct / total))        
     #print('now is {}'.format(type(model)))
-    model.train()
+    model.train(True)
     '''
     model.eval()
     test_output = model(test_data)
