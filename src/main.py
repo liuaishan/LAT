@@ -135,7 +135,7 @@ def train_op(model):
                 if args.model == 'resnet':
                     if args.enable_lat:
                         model.z0_reg.data = args.alpha * model.z0_reg.data + \
-                                          model.z0.grad) / torch.norm(torch.norm(torch.norm(model.z0.grad, p = 2,dim = 2),p = 2,dim = 2),p = 2,dim = 1).view(args.batchsize,1,1,1).repeat(1,16,32,32)
+                                          model.z0.grad / torch.norm(torch.norm(torch.norm(model.z0.grad, p = 2,dim = 2),p = 2,dim = 2),p = 2,dim = 1).view(args.batchsize,1,1,1).repeat(1,16,32,32)
                         net = nn.Sequential(model.layer1,model.layer2,model.layer3,model.layer4)
                         #print(len(net),len(net[0]))
                         for i in range(len(net)):

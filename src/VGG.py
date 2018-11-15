@@ -10,12 +10,13 @@ class VGG16(nn.Module):
         self.cf_dict = [64, 64, 'mp', 128, 128, 'mp', 256, 256, 256, 'mp', 512, 512, 512, 'mp', 512, 512, 512, 'mp']
         self.z_list = ['z1_reg','z2_reg','z3_reg','z4_reg','z5_reg','z6_reg','z7_reg','z8_reg','z9_reg','z10_reg','z11_reg','z12_reg','z13_reg']
         self.register_buffer('x_reg', torch.zeros([batch_size, 3, 32, 32]))
+        self.reg_size_list = list()
         self.features = self._make_layers()
         self.linear = nn.Linear(512, num_classes)
         self.enable_lat = enable_lat
         self.epsilon = epsilon
         self.pro_num = pro_num
-        self.reg_size_list = []
+
 
 
     def forward(self, x):
