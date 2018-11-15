@@ -122,48 +122,42 @@ def train_op(model):
                 if args.model == 'lenet':
                     if args.enable_lat:
                         model.z1_reg.data = args.alpha * model.z1_reg.data + \
-                                          torch.sign(model.z1.grad)/torch.norm(model.z1.grad, 2)
+                                          model.z1.grad / torch.norm(torch.norm(torch.norm(model.z1.grad, p = 2,dim = 2),p = 2,dim = 2),p = 2,dim = 1).view(args.batchsize,1,1,1).repeat(1,6,28,28)
                         model.z2_reg.data = args.alpha * model.z2_reg.data + \
-                                          torch.sign(model.z2.grad)/torch.norm(model.z2.grad, 2)
+                                          model.z2.grad / torch.norm(torch.norm(torch.norm(model.z2.grad, p = 2,dim = 2),p = 2,dim = 2),p = 2,dim = 1).view(args.batchsize,1,1,1).repeat(1,16,10,10)
                         model.z3_reg.data = args.alpha * model.z3_reg.data + \
-                                          torch.sign(model.z3.grad)/torch.norm(model.z3.grad, 2)
+                                          model.z3.grad / torch.norm(model.z3.grad, p = 2,dim = 1).view(args.batchsize,1).repeat(1,120)
                         model.z4_reg.data = args.alpha * model.z4_reg.data + \
-                                          torch.sign(model.z4.grad)/torch.norm(model.z4.grad, 2)
+                                          model.z4.grad / torch.norm(model.z4.grad, p = 2,dim = 1).view(args.batchsize,1).repeat(1,84)
                         model.x_reg.data = args.alpha * model.x_reg.data + \
-                                            torch.sign(model.input.grad) / torch.norm(model.input.grad, 2)
-                        #temp = torch.clamp(iter_input_x.detach() + args.epsilon * torch.sign(iter_input_x.grad),max=1,min=0)
+                                          model.input.grad / torch.norm(torch.norm(torch.norm(model.input.grad, p = 2,dim = 2),p = 2,dim = 2),p = 2,dim = 1).view(args.batchsize,1,1,1).repeat(1,1,28,28)
 
-                        #temp = iter_input_x.detach() + args.epsilon * torch.sign(iter_input_x.grad)
-                        #iter_input_x = iter_input_x.add(temp)
-                        # add or not???? grad of input x
-                        # temp = torch.clamp(iter_input_x.detach() + EPSILON * torch.sign(iter_input_x.grad),max=1,min=0)
-                        # iter_input_x = iter_input_x.add(temp)
                 if args.model == 'resnet':
                     if args.enable_lat:
                         model.z0_reg.data = args.alpha * model.z0_reg.data + \
-                                          torch.sign(model.z0.grad)/torch.norm(model.z0.grad, 2)
+                                          model.z0.grad) / torch.norm(torch.norm(torch.norm(model.z0.grad, p = 2,dim = 2),p = 2,dim = 2),p = 2,dim = 1).view(args.batchsize,1,1,1).repeat(1,16,32,32)
                         net = nn.Sequential(model.layer1,model.layer2,model.layer3,model.layer4)
                         #print(len(net),len(net[0]))
                         for i in range(len(net)):
                             for j in range(len(net[i])):
                                 net[i][j].z1_reg.data = args.alpha * net[i][j].z1_reg.data + \
-                                          torch.sign(net[i][j].z1.grad)/torch.norm(net[i][j].z1.grad, 2)
+                                          net[i][j].z1.grad / torch.norm(torch.norm(torch.norm(net[i][j].z1.grad, p = 2,dim = 2),p = 2,dim = 2),p = 2,dim = 1).view(args.batchsize,1,1,1).repeat(1,net[i][j].planes,net[i][j].init_imgSize,net[i][j].init_imgSize) 
                                 net[i][j].z2_reg.data = args.alpha * net[i][j].z2_reg.data + \
-                                          torch.sign(net[i][j].z2.grad)/torch.norm(net[i][j].z2.grad, 2)
+                                          net[i][j].z2.grad / torch.norm(torch.norm(torch.norm(net[i][j].z2.grad, p = 2,dim = 2),p = 2,dim = 2),p = 2,dim = 1).view(args.batchsize,1,1,1).repeat(1,net[i][j].planes,net[i][j].imgSize,net[i][j].imgSize) 
                                 net[i][j].z3_reg.data = args.alpha * net[i][j].z3_reg.data + \
-                                          torch.sign(net[i][j].z3.grad)/torch.norm(net[i][j].z3.grad, 2)
+                                          net[i][j].z3.grad / torch.norm(torch.norm(torch.norm(net[i][j].z3.grad, p = 2,dim = 2),p = 2,dim = 2),p = 2,dim = 1).view(args.batchsize,1,1,1).repeat(1,net[i][j].planes * net[i][j].expansion,net[i][j].imgSize,net[i][j].imgSize) 
                                 if len(net[i][j].shortcut):
                                     net[i][j].z4_reg.data = args.alpha * net[i][j].z4_reg.data + \
-                                              torch.sign(net[i][j].z4.grad)/torch.norm(net[i][j].z4.grad, 2)
+                                              net[i][j].z4.grad / torch.norm(torch.norm(torch.norm(net[i][j].z4.grad, p = 2,dim = 2),p = 2,dim = 2),p = 2,dim = 1).view(args.batchsize,1,1,1).repeat(1,net[i][j].planes * net[i][j].expansion,net[i][j].imgSize,net[i][j].imgSize)
                         model.x_reg.data = args.alpha * model.x_reg.data + \
-                                          torch.sign(model.input.grad)/torch.norm(model.input.grad, 2)
+                                          model.input.grad / torch.norm(torch.norm(torch.norm(model.input.grad, p = 2,dim = 2),p = 2,dim = 2),p = 2,dim = 1).view(args.batchsize,1,1,1).repeat(1,3,32,32)
 
                 if args.model == 'vgg':
                     if args.enable_lat:
                         for i in range(1,13):  # z1 ~ z12
-                            exec('model.z{}_reg.data = args.alpha * model.z{}_reg.data + torch.sign(model.z{}.grad)/torch.norm(model.z{}.grad, 2)'.format(i,i,i,i))
+                            exec('model.z{}_reg.data = args.alpha * model.z{}_reg.data + model.z{}.grad / torch.norm(torch.norm(torch.norm(model.z{}.grad, p = 2,dim = 2),p = 2,dim = 2),p = 2,dim = 1).view(args.batchsize,1,1,1).repeat(1,model.reg_size_list[{}-1][1],model.reg_size_list[{}-1][2],model.reg_size_list[{}-1][3])'.format(i,i,i,i,i,i,i))
                         model.x_reg.data = args.alpha * model.x_reg.data + \
-                                            torch.sign(model.input.grad) / torch.norm(model.input.grad, 2)
+                                            model.input.grad / torch.norm(torch.norm(torch.norm(model.input.grad, p = 2,dim = 2),p = 2,dim = 2),p = 2,dim = 1).view(args.batchsize,1,1,1).repeat(1,3,32,32)
 
             # test acc for validation set
             if step % 50 == 0:

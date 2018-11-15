@@ -81,6 +81,8 @@ class Bottleneck(nn.Module):
     def __init__(self, enable_lat, epsilon, pro_num, batch_size, in_planes, planes, stride, imgSize):
         super(Bottleneck, self).__init__()
         self.imgSize = imgSize
+        self.init_imgSize = imgSize
+        self.planes = planes
         #print(self.imgSize)
         self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=1, bias=True)
         self.register_buffer('z1_reg', torch.zeros([batch_size, planes, self.imgSize, self.imgSize]))

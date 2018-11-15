@@ -15,6 +15,7 @@ class VGG16(nn.Module):
         self.enable_lat = enable_lat
         self.epsilon = epsilon
         self.pro_num = pro_num
+        self.reg_size_list = []
 
 
     def forward(self, x):
@@ -177,6 +178,7 @@ class VGG16(nn.Module):
                 layers += [conv3x3(in_planes, x), nn.BatchNorm2d(x), nn.ReLU(inplace=True)]
                 in_planes = x
                 self.register_buffer(self.z_list[z_index], torch.zeros([self.batch_size, in_planes, (int)(imgSize), (int)(imgSize)]))
+                self.reg_size_list.append([self.batch_size, in_planes, (int)(imgSize), (int)(imgSize)])
                 z_index += 1
         # After cfg convolution
         layers += [nn.AvgPool2d(kernel_size=1, stride=1)]
