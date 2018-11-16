@@ -102,7 +102,6 @@ def train_op(model):
                 continue
             b_x = Variable(x).cuda()
             b_y = Variable(y).cuda()
-
             model.zero_reg()
             # progressive process
             for iter in range(args.pro_num):
@@ -148,9 +147,11 @@ def train_op(model):
                                           net[i][j].z2.grad / torch.norm(torch.norm(torch.norm(net[i][j].z2.grad, p = 2,dim = 2),p = 2,dim = 2),p = 2,dim = 1).view(args.batchsize,1,1,1).repeat(1,net[i][j].planes,net[i][j].imgSize,net[i][j].imgSize) 
                                 net[i][j].z3_reg.data = args.alpha * net[i][j].z3_reg.data + \
                                           net[i][j].z3.grad / torch.norm(torch.norm(torch.norm(net[i][j].z3.grad, p = 2,dim = 2),p = 2,dim = 2),p = 2,dim = 1).view(args.batchsize,1,1,1).repeat(1,net[i][j].planes * net[i][j].expansion,net[i][j].imgSize,net[i][j].imgSize) 
+                                '''
                                 if len(net[i][j].shortcut):
                                     net[i][j].z4_reg.data = args.alpha * net[i][j].z4_reg.data + \
                                               net[i][j].z4.grad / torch.norm(torch.norm(torch.norm(net[i][j].z4.grad, p = 2,dim = 2),p = 2,dim = 2),p = 2,dim = 1).view(args.batchsize,1,1,1).repeat(1,net[i][j].planes * net[i][j].expansion,net[i][j].imgSize,net[i][j].imgSize)
+                                '''
                         model.x_reg.data = args.alpha * model.x_reg.data + \
                                           model.input.grad / torch.norm(torch.norm(torch.norm(model.input.grad, p = 2,dim = 2),p = 2,dim = 2),p = 2,dim = 1).view(args.batchsize,1,1,1).repeat(1,3,32,32)
 
@@ -244,7 +245,7 @@ def test_op(model):
     '''
 
 if __name__ == "__main__":
-    #torch.cuda.set_device(6) # use gpu-6
+    torch.cuda.set_device(6) # use gpu-6
     if args.enable_lat:
         real_model_path = args.model_path + "lat_param.pkl"
         print('loading the LAT model')
