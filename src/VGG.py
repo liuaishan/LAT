@@ -184,6 +184,23 @@ class VGG16(nn.Module):
         # After cfg convolution
         layers += [nn.AvgPool2d(kernel_size=1, stride=1)]
         return nn.Sequential(*layers)
+
+    def zero_reg(self):
+        self.x_reg.data = self.x_reg.data.fill_(0.0)
+        self.z1_reg.data = self.z1_reg.data.fill_(0.0)
+        self.z2_reg.data = self.z2_reg.data.fill_(0.0)
+        self.z3_reg.data = self.z3_reg.data.fill_(0.0)
+        self.z4_reg.data = self.z4_reg.data.fill_(0.0)
+        self.z5_reg.data = self.z5_reg.data.fill_(0.0)
+        self.z6_reg.data = self.z6_reg.data.fill_(0.0)
+        self.z7_reg.data = self.z7_reg.data.fill_(0.0)
+        self.z8_reg.data = self.z8_reg.data.fill_(0.0)
+        self.z9_reg.data = self.z9_reg.data.fill_(0.0)
+        self.z10_reg.data = self.z10_reg.data.fill_(0.0)
+        self.z11_reg.data = self.z11_reg.data.fill_(0.0)
+        self.z12_reg.data = self.z12_reg.data.fill_(0.0)
+        self.z13_reg.data = self.z13_reg.data.fill_(0.0)
+
 '''
 def conv_init(m):
     classname = m.__class__.__name__

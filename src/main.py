@@ -102,6 +102,8 @@ def train_op(model):
                 continue
             b_x = Variable(x).cuda()
             b_y = Variable(y).cuda()
+
+            model.zero_reg()
             # progressive process
             for iter in range(args.pro_num):
                 iter_input_x = b_x
@@ -161,6 +163,7 @@ def train_op(model):
 
             # test acc for validation set
             if step % 50 == 0:
+                model.zero_reg()
                 test_op(model)
                 #model.eval()
                 #test_output = model(test_x)
@@ -180,6 +183,7 @@ def train_op(model):
             
             # print batch-size predictions from training data
             if step % 10 == 0:
+                model.zero_reg()
                 #model.eval()
                 test_output = model(b_x)
                 train_loss = loss_func(test_output, b_y)
@@ -240,7 +244,7 @@ def test_op(model):
     '''
 
 if __name__ == "__main__":
-    torch.cuda.set_device(6) # use gpu-6
+    #torch.cuda.set_device(6) # use gpu-6
     if args.enable_lat:
         real_model_path = args.model_path + "lat_param.pkl"
         print('loading the LAT model')
