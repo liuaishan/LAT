@@ -108,4 +108,10 @@ class LeNet(nn.Module):
 
         return logits, a4
 
+    def zero_reg(self):
+        self.x_reg.data = self.x_reg.data.fill_(0.0)
+        self.z1_reg.data = self.z1_reg.data.fill_(0.0)
+        self.z2_reg.data = self.z2_reg.data.fill_(0.0)
+        self.z3_reg.data = self.z3_reg.data.fill_(0.0)
+        self.z4_reg.data = self.z4_reg.data.fill_(0.0)
 
