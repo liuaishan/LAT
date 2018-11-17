@@ -6,7 +6,7 @@
 @desc:
 '''
 
-from torch.autograd import variable
+from torch.autograd import Variable
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
@@ -40,7 +40,7 @@ class LeNet(nn.Module):
     def forward(self, x):
 
         # layer 0
-        x.retain_grad()   
+        x.retain_grad()     #used for generating the adversarial example
         self.input = x
         if (self.batch_norm):
             self.input = self.bn1(self.input)
@@ -108,5 +108,10 @@ class LeNet(nn.Module):
 
         return logits, a4
 
-
+    def zero_reg(self):
+        self.x_reg.data = self.x_reg.data.fill_(0.0)
+        self.z1_reg.data = self.z1_reg.data.fill_(0.0)
+        self.z2_reg.data = self.z2_reg.data.fill_(0.0)
+        self.z3_reg.data = self.z3_reg.data.fill_(0.0)
+        self.z4_reg.data = self.z4_reg.data.fill_(0.0)
 
