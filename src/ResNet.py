@@ -74,9 +74,11 @@ class ResNet50(nn.Module):
     def zero_reg(self):
         self.x_reg.data = self.x_reg.data.fill_(0.0)
         self.z0_reg.data = self.z0_reg.data.fill_(0.0)
-        for i in range(1,5):
-            for j in range(1,4):
-                exec("self.layer{}.z{}_reg.data = self.layer{}.z{}_reg.data.fill_(0.0)".format(i,j))
+        num_blocks=[3,4,6,3]
+        for i in range(0,4):
+            for j in range(num_blocks[i]):
+                for k in range(0,3):
+                    exec("self.layer{}[j].z{}_reg.data = self.layer{}[j].z{}_reg.data.fill_(0.0)".format(i+1,k+1,i+1,k+1))
 
 def conv3x3(in_planes, out_planes, stride=1):
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=True)
