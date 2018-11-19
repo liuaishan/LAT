@@ -25,6 +25,7 @@ class ResNet50(nn.Module):
         self.enable_lat = enable_lat
         self.epsilon = epsilon
         self.pro_num = pro_num
+        self.if_dropout = if_dropout
 
     def _make_layer(self, enable_lat, epsilon, pro_num, batch_size, block, planes, num_blocks, stride, imgSize):
         strides = [stride] + [1]*(num_blocks-1)
@@ -47,7 +48,7 @@ class ResNet50(nn.Module):
         if self.enable_lat:
             self.input.retain_grad()
             # LAT add saved grad to x_reg
-            input_add = self.input.add(self.epsilon / self.pro_num * torch.sign(self.x_reg.data))
+            input_add = self.input.add(self.epsilon / self.pro_num * self.x_reg.data)
         else:
             input_add = self.input
 
@@ -55,7 +56,7 @@ class ResNet50(nn.Module):
         if self.enable_lat:
             self.z0.retain_grad()
             # LAT add saved grad to z0_reg
-            z0_add = self.z0.add(self.epsilon / self.pro_num * torch.sign(self.z0_reg.data))
+            z0_add = self.z0.add(self.epsilon / self.pro_num * self.z0_reg.data)
         else:
             z0_add = self.z0
         a0 = F.relu(self.bn1(z0_add))
@@ -68,7 +69,8 @@ class ResNet50(nn.Module):
         p4 = F.avg_pool2d(a4, 4)
 
         out = self.linear(p4.view(p4.size(0), -1))
-
+        if (self.if_dropout):
+            out = F.dropout(out, p=0.5, training=self.training)
         return out
     
     def zero_reg(self):
@@ -124,7 +126,7 @@ class Bottleneck(nn.Module):
         if self.enable_lat:
             self.z1.retain_grad()
             # LAT add saved grad to z1_reg
-            z1_add = self.z1.add(self.epsilon / self.pro_num * torch.sign(self.z1_reg.data))
+            z1_add = self.z1.add(self.epsilon / self.pro_num * self.z1_reg.data)
         else:
             z1_add = self.z1
 
@@ -134,7 +136,7 @@ class Bottleneck(nn.Module):
         if self.enable_lat:
             self.z2.retain_grad()
             # LAT add saved grad to z2_reg
-            z2_add = self.z2.add(self.epsilon / self.pro_num * torch.sign(self.z2_reg.data))
+            z2_add = self.z2.add(self.epsilon / self.pro_num * self.z2_reg.data)
         else:
             z2_add = self.z2
         a2 = F.relu(self.bn2(z2_add))
@@ -143,7 +145,7 @@ class Bottleneck(nn.Module):
         if self.enable_lat:
             self.z3.retain_grad()
             # LAT add saved grad to z3_reg
-            z3_add = self.z3.add(self.epsilon / self.pro_num * torch.sign(self.z3_reg.data))
+            z3_add = self.z3.add(self.epsilon / self.pro_num * self.z3_reg.data)
         else:
             z3_add = self.z3
         a3 = F.relu(self.bn3(z3_add))
@@ -169,13 +171,14 @@ class Bottleneck(nn.Module):
         return a4
 
 
-'''
+
 def conv_init(m):
     classname = m.__class__.__name__
     if classname.find('Conv') != -1:
-        init.xavier_uniform(m.weight, gain=np.sqrt(2))
-        init.constant(m.bias, 0)
+        nn.init.xavier_uniform_(m.weight, gain=np.sqrt(2))
+        nn.init.constant_(m.bias, 0)
 
+'''
 class BasicBlock(nn.Module):
     expansion = 1
 
