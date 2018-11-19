@@ -245,17 +245,16 @@ def test_op(model):
     '''
 
 if __name__ == "__main__":
-    torch.cuda.set_device(6) # use gpu-6
     if args.enable_lat:
         real_model_path = args.model_path + "lat_param.pkl"
         print('loading the LAT model')
     else:
         real_model_path = args.model_path + "naive_param.pkl"
         print('loading the naive model')
-    '''
+    
     if args.test_flag:
         args.enable_lat = False
-    '''
+    
     # switch models
     if args.model == 'lenet':
         cnn = LeNet(enable_lat=args.enable_lat,
