@@ -16,7 +16,7 @@ class VGG16(nn.Module):
         self.enable_lat = enable_lat
         self.epsilon = epsilon
         self.pro_num = pro_num
-
+        self.if_dropout = if_dropout
 
 
     def forward(self, x):
@@ -117,7 +117,7 @@ class VGG16(nn.Module):
             z9_add = self.z9.add(self.epsilon / self.pro_num * self.z9_reg.data)
         else:
             z9_add = self.z9
-        a9 = self.features[29](self.features[28](z9_add)) #bn2,relu
+        a9 = self.features[29](self.features[28](z9_add)) #bn9,relu
 
         self.z10 = self.features[30](a9)  # conv10
         if self.enable_lat:
@@ -155,13 +155,15 @@ class VGG16(nn.Module):
             z13_add = self.z13.add(self.epsilon / self.pro_num * self.z13_reg.data)
         else:
             z13_add = self.z13
-        a13 = self.features[42](self.features[41](z13_add)) #bn12,relu
+        a13 = self.features[42](self.features[41](z13_add)) #bn13,relu
 
         p13 = self.features[43](a13) # maxpooling
 
         out = self.features[44](p13) # avgpooling
         #out = self.features(x)
         out = out.view(out.size(0), -1)
+        if (self.if_dropout):
+            out = F.dropout(out, p=0.5, training=self.training)
         out = self.linear(out)
 
         return out
@@ -201,13 +203,13 @@ class VGG16(nn.Module):
         self.z12_reg.data = self.z12_reg.data.fill_(0.0)
         self.z13_reg.data = self.z13_reg.data.fill_(0.0)
 
-'''
+
 def conv_init(m):
     classname = m.__class__.__name__
     if classname.find('Conv') != -1:
-        init.xavier_uniform(m.weight, gain=np.sqrt(2))
-        init.constant(m.bias, 0)
-'''
+        nn.init.xavier_uniform_(m.weight, gain=np.sqrt(2))
+        nn.init.constant_(m.bias, 0)
+
 def conv3x3(in_planes, out_planes, stride=1):
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=True)
 

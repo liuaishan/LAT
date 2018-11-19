@@ -268,12 +268,15 @@ if __name__ == "__main__":
         cnn = ResNet50(enable_lat=args.enable_lat,
                     epsilon=args.epsilon,
                     pro_num=args.pro_num,
-                    batch_size=args.batchsize)
+                    batch_size=args.batchsize,
+                    if_dropout=args.dropout)
+        cnn.apply(conv_init)
     elif args.model == 'vgg':
         cnn = VGG16(enable_lat=args.enable_lat,
                     epsilon=args.epsilon,
                     pro_num=args.pro_num,
-                    batch_size=args.batchsize)
+                    batch_size=args.batchsize,
+                    if_dropout=args.dropout)
     cnn.cuda()
 
     if os.path.exists(real_model_path):
