@@ -112,7 +112,7 @@ def train_op(model):
                         model.x_reg.data = args.alpha * model.x_reg.data + \
                                           model.input.grad / torch.norm(torch.norm(torch.norm(model.input.grad, p = 2,dim = 2),p = 2,dim = 2),p = 2,dim = 1).view(args.batchsize,1,1,1).repeat(1,1,28,28)
 
-
+            print('loss: ' + str(loss.data.cpu().numpy()))
             # test acc for validation set
             if (step+1) % 50 == 0: 
                 model.zero_reg()

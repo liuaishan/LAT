@@ -28,11 +28,10 @@ def read_data(file_path):
         if not len(data_set[0]) == len(data_set[1]):
             return None, None, 0
 
-        #data = data_set[0][:size] / 255.
-
         data = torch.unsqueeze(data_set[0], dim=1).type(torch.FloatTensor)[:size]
         label = data_set[1][:size]
-
+        #data = data_set[0]
+        #label = data_set[1]
         data = np.asarray(data)
         label = np.asarray(label)
         return data, label, size
