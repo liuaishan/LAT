@@ -108,7 +108,7 @@ def tfgsm(model,criterion,batch_size,alpha,X_input,Y_input):
             X.grad.data.fill_(0)
         loss.backward()
         
-        #FGSM
+        #TFGSM
         X_adv = X.detach() - eps[i] * torch.sign(X.grad)
         X_adv = torch.clamp(X_adv,0,1)
         

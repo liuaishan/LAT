@@ -47,7 +47,7 @@ class LeNet(nn.Module):
         if (self.enble_lat):
             self.input.retain_grad()
             # LAT add saved grad to x_reg
-            input_add = self.input.add(self.epsilon / self.pro_num * torch.sign(self.x_reg.data))
+            input_add = self.input.add(self.epsilon / self.pro_num * self.x_reg.data)
         else:
             input_add = self.input
 
@@ -58,7 +58,7 @@ class LeNet(nn.Module):
         if (self.enble_lat):
             self.z1.retain_grad()
             # LAT add saved grad to z1_reg
-            z1_add = self.z1.add(self.epsilon / self.pro_num * torch.sign(self.z1_reg.data))
+            z1_add = self.z1.add(self.epsilon / self.pro_num * self.z1_reg.data)
         else:
             z1_add = self.z1
         a1 = F.relu(z1_add)
@@ -71,7 +71,7 @@ class LeNet(nn.Module):
         if (self.enble_lat):
             self.z2.retain_grad()
             # LAT add saved grad to z2_reg
-            z2_add = self.z2.add(self.epsilon / self.pro_num * torch.sign(self.z2_reg.data))
+            z2_add = self.z2.add(self.epsilon / self.pro_num * self.z2_reg.data)
         else:
             z2_add = self.z2
         a2 = F.relu(z2_add)
@@ -85,7 +85,7 @@ class LeNet(nn.Module):
         if (self.enble_lat):
             self.z3.retain_grad()
             # LAT add saved grad to z3_reg
-            z3_add = self.z3.add(self.epsilon / self.pro_num * torch.sign(self.z3_reg.data))
+            z3_add = self.z3.add(self.epsilon / self.pro_num * self.z3_reg.data)
         else:
             z3_add = self.z3
         a3 = F.relu(z3_add)
@@ -98,7 +98,7 @@ class LeNet(nn.Module):
         if (self.enble_lat):
             self.z4.retain_grad()
             # LAT add saved grad to z4_reg
-            z4_add = self.z4.add(self.epsilon / self.pro_num * torch.sign(self.z4_reg.data))
+            z4_add = self.z4.add(self.epsilon / self.pro_num * self.z4_reg.data)
         else:
             z4_add = self.z4
         a4 = F.relu(z4_add)
