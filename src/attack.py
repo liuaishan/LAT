@@ -90,7 +90,7 @@ class Attack():
         return test_data_cln, test_data_adv, test_label, test_label_adv
 # MNIST: test_data_cln , torch.Size([10000, 1, 28, 28]) ; test_label, torch.Size([10000])
 
-    def tfgsm(self):
+    def step_ll(self):
         test_loader = self.return_data()
         self.model.eval()
 
@@ -161,6 +161,77 @@ class Attack():
             h = self.model(x)
             _, predictions = torch.max(h,1)
             correct_cln += (predictions == labels).sum()
+
+            for j in range(0, self.iteration):
+                h_adv = self.model(x_adv)
+
+                loss = self.criterion(h_adv, y_true)
+                self.model.zero_grad()
+                if x_adv.grad is not None:
+                    x_adv.grad.data.fill_(0)
+                loss.backward()
+                
+                #I-FGSM
+                #x_adv.grad.sign_()   # change the grad with sign ?
+                print(type(x_adv.grad),x_adv.grad.size())
+                x_adv = x_adv.detach() + self.alpha * torch.sign(x_adv.grad)
+                # according to the paper of Kurakin:
+                x_adv = torch.where(x_adv > x+self.epsilon, x+self.epsilon, x_adv)
+                x_adv = torch.clamp(x_adv, 0, 1)
+                x_adv = torch.where(x_adv < x-self.epsilon, x-self.epsilon, x_adv)
+                x_adv = torch.clamp(x_adv, 0, 1)
+                x_adv = Variable(x_adv.data, requires_grad=True)
+
+            h_adv = self.model(x_adv)
+            _, predictions_adv = torch.max(h_adv,1)
+            correct_adv += (predictions_adv == labels).sum()
+
+            #print(x.data.size(),x_adv.data.size(),labels.size())
+            if i == 0:
+                test_data_cln = x.data.detach().cpu()
+                test_data_adv = x_adv.data.cpu()
+                test_label = labels
+                test_label_adv = predictions_adv
+            else:
+                test_data_cln = torch.cat([test_data_cln, x.data.detach().cpu()],0)
+                test_data_adv = torch.cat([test_data_adv, x_adv.data.detach().cpu()],0)
+                test_label = torch.cat([test_label, labels],0)
+                test_label_adv = torch.cat([test_label_adv, predictions_adv],0)
+
+            #print(test_data_cln.size(),test_data_adv.size(),test_label.size())
+
+            correct += (predictions == predictions_adv).sum()
+            total += len(predictions)
+        
+        self.model.train()
+        error_rate = float(total-correct)*100/total
+        print("Error Rate is ",float(total-correct)*100/total)
+        print("Before I-FGSM the accuracy is",float(100*correct_cln)/total)
+        print("After I-FGSM the accuracy is",float(100*correct_adv)/total)
+
+        return test_data_cln, test_data_adv, test_label, test_label_adv 
+
+    def PGD(self):
+        test_loader = self.return_data()
+        self.model.eval()
+
+        correct = 0
+        correct_cln = 0
+        correct_adv = 0
+        total = 0
+        for i,(images,labels) in enumerate(test_loader):
+            x = Variable(images, requires_grad = True)
+            y_true = Variable(labels, requires_grad = False)
+
+
+            h = self.model(x)
+            _, predictions = torch.max(h,1)
+            correct_cln += (predictions == labels).sum()
+
+            x_rand = x.detach()
+            x_rand = x_rand + torch.zeros_like(x_rand).uniform_(-self.epsilon,self.epsilon)
+
+            x_adv = Variable(x_rand.data, requires_grad=True)
 
             for j in range(0, self.iteration):
                 h_adv = self.model(x_adv)
