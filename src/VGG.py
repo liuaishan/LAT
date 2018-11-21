@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
+from torch.nn import functional as F
 
 class VGG16(nn.Module):
     def __init__(self, enable_lat, epsilon, pro_num, batch_size = 128, num_classes=10, if_dropout = False):
