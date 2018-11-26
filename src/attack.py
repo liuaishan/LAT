@@ -103,9 +103,10 @@ class Attack():
             y_true = Variable(labels, requires_grad = False)
 
             h = self.model(x)
-            _, predictions = torch.min(h,1)
+            _, predictions = torch.max(h,1)
+            _, predictions_ll = torch.min(h,1)
             correct_cln += (predictions == y_true).sum()
-            loss = self.criterion(h, predictions)
+            loss = self.criterion(h, predictions_ll)
             self.model.zero_grad()
             if x.grad is not None:
                 x.grad.data.fill_(0)
