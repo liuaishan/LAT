@@ -230,6 +230,7 @@ class Attack():
 
             x_rand = x.detach()
             x_rand = x_rand + torch.zeros_like(x_rand).uniform_(-self.epsilon,self.epsilon)
+            x_rand = torch.clamp(x_rand, 0, 1)
 
             x_adv = Variable(x_rand.data, requires_grad=True)
 
