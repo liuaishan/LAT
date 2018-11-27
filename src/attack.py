@@ -13,8 +13,38 @@ import matplotlib.pyplot as plt
 import numpy as np 
 import pickle
 import os
+import argparse
 
-device_id = 4
+
+#device_id = 4
+
+def get_bool(string):
+    if(string == 'False'):
+        return False
+    else:
+        return True
+parser = argparse.ArgumentParser(description='attack implementation')
+parser.add_argument('--attack', default='fgsm', help='attack type to be used(fgsm, ifgsm, step_ll, pgd....)')
+parser.add_argument('--generate', type=get_bool, default=False, help='whether to generate adv examples as .p files')
+# if use iterative attack , the droplast should be set as True
+parser.add_argument('--droplast', type=get_bool, default=False, help='whether to drop last batch in testloader')
+parser.add_argument('--model', default='resnet', help='target model or model generate advs(resnet, vgg,...)')
+parser.add_argument('--modelpath', default="/media/dsg3/dsgprivate/lat/liuaishan/cifar10/vgg16_origin_dropout/naive_param.pkl", help='target model path')
+parser.add_argument('--model_batchsize', type=int, default=128, help='batchsize in target model')
+parser.add_argument('--dropout', type=get_bool, default=False, help='if dropout in target model')
+parser.add_argument('--attack_batchsize', type=int, default=128, help='batchsize in Attack')
+parser.add_argument('--attack_epsilon', type=float, default=8.0, help='epsilon in Attack')
+parser.add_argument('--attack_alpha', type=float, default=2.0, help='alpha in Attack')
+parser.add_argument('--attack_iter', type=int, default=10, help='iteration times in Attack')
+parser.add_argument('--savepath', default="/media/dsg3/dsgprivate/lat/test", help='saving path of clean and adv data')
+parser.add_argument('--imgpath', default='/media/dsg3/dsgprivate/lat/img/eps_0.031', help='images path')
+parser.add_argument('--enable_lat', type=get_bool, default=False, help='enable lat')
+parser.add_argument('--lat_epsilon', type=float, default=0.3, help='epsilon in lat')
+parser.add_argument('--lat_pronum', type=int, default=5, help='pronum in lat')
+parser.add_argument('--dataset', default='cifar10', help='dataset used for attacking')
+args = parser.parse_args()
+#print(args)
+
 
 class Attack():
     def __init__(self, dataroot, dataset, batch_size, target_model, criterion, epsilon=0.2, alpha=0.03, iteration=1):
@@ -33,8 +63,9 @@ class Attack():
             test_dataset = torchvision.datasets.MNIST(root=self.dataroot,train=False, transform=transforms.ToTensor())
         elif self.dataset == 'cifar10':
             test_dataset = torchvision.datasets.CIFAR10(root=self.dataroot,train=False, transform=transforms.ToTensor())
-        test_loader = torch.utils.data.DataLoader(dataset=test_dataset,batch_size=self.batch_size,shuffle=False)
+        test_loader = torch.utils.data.DataLoader(dataset=test_dataset,batch_size=self.batch_size,shuffle=False,drop_last=args.droplast)
         return test_loader
+        
     def return_trainloader(self):
         if self.dataset == 'cifar10':
             train_dataset = torchvision.datasets.CIFAR10(root=self.dataroot,train=True, transform=transforms.ToTensor())
@@ -283,9 +314,8 @@ class Attack():
 
         return test_data_cln, test_data_adv, test_label, test_label_adv
 
-def save(test_data_cln, test_data_adv, test_label, test_label_adv):
-    #save adversarial examples
-    imgpath = '/media/dsg3/dsgprivate/lat/img/eps_{}'.format(eps)
+def save_img(imgpath,test_data_cln, test_data_adv, test_label, test_label_adv):
+    #save adversarial example
     if Path(imgpath).exists()==False:
         Path(imgpath).mkdir(parents=True)
     toImg = transforms.ToPILImage()
@@ -324,55 +354,68 @@ def display(test_data_cln, test_data_adv, test_label, test_label_adv):
         plt.show()
 
 
-def save_data_label(test_data_cln, test_data_adv, test_label, test_label_adv):
-    with open('/media/dsg3/dsgprivate/lat/test_stepll/test_data_cln.p','wb') as f:
+def save_data_label(path, test_data_cln, test_data_adv, test_label, test_label_adv):
+    if Path(path).exists() == False:
+        Path(path).mkdir(parents=True)
+    with open(Path(path)/Path('test_data_cln.p'),'wb') as f:
         pickle.dump(test_data_cln, f, pickle.HIGHEST_PROTOCOL)
 
-    with open('/media/dsg3/dsgprivate/lat/test_stepll/test_adv(eps_{:.3f}).p'.format(eps),'wb') as f:
+    with open(Path(path)/Path('test_adv(eps_{:.3f}).p'.format(eps)),'wb') as f:
         pickle.dump(test_data_adv, f, pickle.HIGHEST_PROTOCOL)
 
-    with open('/media/dsg3/dsgprivate/lat/test_stepll/test_label.p','wb') as f:
+    with open(Path(path)/Path('test_label.p'),'wb') as f:
         pickle.dump(test_label, f, pickle.HIGHEST_PROTOCOL)
     
-    with open('/media/dsg3/dsgprivate/lat/test_stepll/label_adv(eps_{:.3f}).p'.format(eps),'wb') as f:
+    with open(Path(path)/Path('label_adv(eps_{:.3f}).p'.format(eps)),'wb') as f:
         pickle.dump(test_label_adv, f, pickle.HIGHEST_PROTOCOL)
 
 
 if __name__ == "__main__":
 
-    torch.cuda.set_device(device_id)
+    #torch.cuda.set_device(device_id)
     from ResNet import ResNet50
     from VGG import VGG16
     from utils import read_data_label 
-    ''' 
-    model = ResNet50(enable_lat = False,
-                     epsilon = 0.5,
-                     pro_num = 7,
-                     batch_size = 128,
-                     num_classes = 10,
-                     if_dropout=True
-                    ).cuda()
-    '''
-    model = VGG16(enable_lat=False,
-                  epsilon=0.3,
-                  pro_num=5,
-                  batch_size=128,
-                  num_classes=10,
-                  if_dropout=True
-                  ).cuda()
-    
-    model.load_state_dict(torch.load(("/media/dsg3/dsgprivate/lat/liuaishan/cifar10/vgg16_origin_dropout/naive_param.pkl")))  
+    if args.model == 'resnet':
+        model = ResNet50(enable_lat =args.enable_lat,
+                         epsilon =args.lat_epsilon,
+                         pro_num =args.lat_pronum,
+                         batch_size =args.model_batchsize,
+                         num_classes = 10,
+                         if_dropout=args.dropout
+                        )
+    elif args.model == 'vgg':
+        model = VGG16(enable_lat=args.enable_lat,
+                      epsilon=args.lat_epsilon,
+                      pro_num=args.lat_pronum,
+                      batch_size=args.model_batchsize,
+                      num_classes=10,
+                      if_dropout=args.dropout
+                      )
+    model.cuda()
+    model.load_state_dict(torch.load((args.modelpath)))  
     # epsilon in net doesn't equal to Attack
+    if args.dataset == 'cifar10':
+        eps = args.attack_epsilon / 255.0
+    else:
+        eps = args.attack_epsilon
     attack = Attack(dataroot = "/media/dsg3/dsgprivate/lat/data/cifar10/",
-                    dataset  = 'cifar10',
-                    batch_size = 128,
+                    dataset  = args.dataset,
+                    batch_size = args.attack_batchsize,
                     target_model = model,
                     criterion = nn.CrossEntropyLoss(),
-                    epsilon = 32.0/255,
-                    alpha = 16.0/255,
-                    iteration = 10)
-    eps = attack.epsilon
-    test_data_cln, test_data_adv, test_label, test_label_adv = attack.fgsm()
+                    epsilon = eps,
+                    alpha =  args.attack_alpha,
+                    iteration = args.attack_iter)
+    if args.attack == 'fgsm':
+        test_data_cln, test_data_adv, test_label, test_label_adv = attack.fgsm()
+    elif args.attack == 'ifgsm':
+        test_data_cln, test_data_adv, test_label, test_label_adv = attack.i_fgsm()
+    elif args.attack == 'stepll':
+        test_data_cln, test_data_adv, test_label, test_label_adv = attack.step_ll()
+    elif args.attack == 'pgd':
+        test_data_cln, test_data_adv, test_label, test_label_adv = attack.pgd()
+    
     print(test_data_adv.size(),test_label.size())
     #test_data, test_label, size = read_data_label('./test_data_cln.p','./test_label.p')
     #test_data_adv, test_label_adv, size = read_data_label('./test_data_cln.p','./test_label.p')
@@ -384,8 +427,9 @@ if __name__ == "__main__":
     '''
     #test_data_cln, test_data_adv, test_label, test_label_adv = attack.i_fgsm()
     #display(test_data_cln, test_data_adv, test_label, test_label_adv)
-    save_data_label(test_data_cln, test_data_adv,test_label, test_label_adv)
-    #save(test_data_cln, test_data_adv, test_label, test_label_adv)
+    if args.generate:
+        save_data_label(args.savepath, test_data_cln, test_data_adv,test_label, test_label_adv)
+    #save_img(args.imgpath, test_data_cln, test_data_adv, test_label, test_label_adv)
 
 
 
