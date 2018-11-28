@@ -1,4 +1,3 @@
-#!/bin/bash
 python main.py \
   --batchsize 128 \
   --epoch 100 \
