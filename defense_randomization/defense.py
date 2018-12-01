@@ -15,7 +15,7 @@ import torchvision.transforms as transforms
 from VGG import VGG16
 import argparse
 
-device_id = 5
+device_id = 6
 
 def get_bool(string):
     if(string == 'False'):
@@ -84,8 +84,8 @@ def main():
 
     if args.model == 'vgg':
         model = VGG16(enable_lat=False,
-                     epsilon=0.8,
-                     pro_num=6,
+                     epsilon=0.6,
+                     pro_num=5,
                      batch_size=args.batch_size,
                      if_dropout=True)
 
@@ -104,8 +104,8 @@ def main():
     for i,(x,y) in enumerate(testing_loader):
         x = x.cuda()
         y = y.cuda()
-        # Randomly resize image from 40 to 60
-        resize_shape = np.random.randint(40,60)
+        # Randomly resize image from 35 to 37
+        resize_shape = np.random.randint(args.img_size,args.img_resize)
         resize = transforms.Resize(resize_shape)
         # x: batch x 3 x 32 x 32
         resized_img = torch.Tensor([])
