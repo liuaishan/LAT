@@ -15,7 +15,7 @@ import torchvision.transforms as transforms
 from VGG import VGG16
 import argparse
 
-device_id = 6
+device_id = 3
 
 def get_bool(string):
     if(string == 'False'):
@@ -28,6 +28,8 @@ parser = argparse.ArgumentParser(description='randomization')
 parser.add_argument('--batch_size', type=int, default=128, help='training batch size')
 parser.add_argument('--img_size', type=int, default=32, help='image size of cifar')
 parser.add_argument('--img_resize', type=int, default=63, help='image max resize after padding')
+parser.add_argument('--iter_times', type=int, default=10, help='iter times with resizing and padding')
+parser.add_argument('--num_classes', type=int, default=10, help='number of classified classes')
 parser.add_argument('--test_data_path', default="/media/dsg3/dsgprivate/lat/test/new/test_adv(eps_0.031).p", help='test images path')
 parser.add_argument('--test_label_path', default="/media/dsg3/dsgprivate/lat/test/new/test_label.p", help='test labels path')
 parser.add_argument('--model', default='vgg', help='test model:vgg, resnet,...')
@@ -104,28 +106,32 @@ def main():
     for i,(x,y) in enumerate(testing_loader):
         x = x.cuda()
         y = y.cuda()
-        # Randomly resize image from 35 to 37
-        resize_shape = np.random.randint(args.img_size,args.img_resize)
-        resize = transforms.Resize(resize_shape)
-        # x: batch x 3 x 32 x 32
-        resized_img = torch.Tensor([])
-        for i in range(x.size()[0]):
-            resized_pil = resize(toPIL(x[i].cpu()))
-            resized_img = torch.cat([resized_img,toTensor(resized_pil)])
-        resized_img = resized_img.view(args.batch_size,3,resize_shape,resize_shape)
-        print(type(resized_img))
-        # Randomly padding from rand to 60
-        pad_shape = np.random.randint(0, args.img_resize-resize_shape)
-        shape = torch.Tensor([args.img_resize,pad_shape,pad_shape])
-        padded_img = padding_layer_cifar(resized_img, shape)
-        padded_img = padded_img.view(args.batch_size,3,args.img_resize,args.img_resize).cuda()
-        print('input size = {}, shape = {}, padded size = {}'.format(resized_img.size(),shape.size(),padded_img.size()))
         h = model(x)
-        h_pad = model(padded_img)
         _, pred = torch.max(h.data,1)
-        _, pred_pad = torch.max(h_pad.data,1)
         total += y.size(0)
         correct += (pred == y).sum().item()
+        h_pad = torch.Tensor(args.batch_size,args.num_classes,args.iter_times)
+        for j in range(args.iter_times):
+            # Randomly resize image from 32 to 35
+            resize_shape = np.random.randint(args.img_size,args.img_resize)
+            resize = transforms.Resize(resize_shape)
+            # x: batch x 3 x 32 x 32
+            resized_img = torch.Tensor([])
+            for k in range(x.size()[0]):
+                resized_pil = resize(toPIL(x[k].cpu()))
+                resized_img = torch.cat([resized_img,toTensor(resized_pil)])
+            resized_img = resized_img.view(args.batch_size,3,resize_shape,resize_shape)
+            print(type(resized_img))
+            # Randomly padding from rand to 35
+            pad_shape = np.random.randint(0, args.img_resize-resize_shape)
+            shape = torch.Tensor([args.img_resize,pad_shape,pad_shape])
+            padded_img = padding_layer_cifar(resized_img, shape)
+            padded_img = padded_img.view(args.batch_size,3,args.img_resize,args.img_resize).cuda()
+            print('input size = {}, shape = {}, padded size = {}'.format(resized_img.size(),shape.size(),padded_img.size()))
+            h_pad_iter = model(padded_img)
+            h_pad[:,:,j] = h_pad_iter
+        h_pad = torch.mean(h_pad,dim=-1).cuda()
+        _, pred_pad = torch.max(h_pad.data,1)
         correct_pad += (pred_pad == y).sum().item()
     print('Before resizing and padding the Accuracy is : {:.2f} %'.format(100 * correct / total))
     print('After resizing and padding the Accuracy is: {:.2f} %'.format(100 * correct_pad / total))

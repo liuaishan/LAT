@@ -16,7 +16,7 @@ import os
 import argparse
 
 
-device_id = 7
+device_id = 3
 
 def get_bool(string):
     if(string == 'False'):
@@ -88,6 +88,7 @@ class Attack():
             #print('self.batch_size={},last batch={}'.format(self.batch_size,10000%self.batch_size))
             #if (i+1) == len(test_loader):
             #    self.model.batch_size = 10000 % self.batch_size
+            x.retain_grad()
             h = self.model(x)
             _, predictions = torch.max(h,1)
             correct_cln += (predictions == y_true).sum()
@@ -142,8 +143,10 @@ class Attack():
         total = 0
         for i,(images,labels) in enumerate(test_loader):
             x = Variable(images, requires_grad = True).cuda()
+            x.retain_grad()
             y_true = Variable(labels, requires_grad = False).cuda()
             x_adv = Variable(x.data, requires_grad=True).cuda()
+            x_adv.retain_grad()
             #if (i+1) == len(test_loader):
             #    self.model.batch_size = 10000 % self.batch_size
             h = self.model(x)
@@ -208,6 +211,7 @@ class Attack():
         total = 0
         for i,(images,labels) in enumerate(test_loader):
             x = Variable(images, requires_grad = True).cuda()
+            x.retain_grad()
             y_true = Variable(labels, requires_grad = False).cuda()
             h = self.model(x)
             _, predictions = torch.max(h,1)
@@ -270,6 +274,7 @@ class Attack():
         total = 0 
         for i, (images, labels) in enumerate(data_loader):
             x = Variable(images, requires_grad = True).cuda()
+            x.retain_grad()
             y_true = Variable(labels, requires_grad = False).cuda()
 
             h = self.model(x)
@@ -326,6 +331,7 @@ class Attack():
         total = 0
         for i,(images,labels) in enumerate(test_loader):
             x = Variable(images, requires_grad = True).cuda()
+            x.retain_grad()
             y_true = Variable(labels, requires_grad = False).cuda()
             x_adv = Variable(x.data, requires_grad=True).cuda()
             x_grad = torch.zeros(x.size()).cuda()
@@ -459,6 +465,8 @@ if __name__ == "__main__":
     torch.cuda.set_device(device_id)
     from ResNet import ResNet50
     from VGG import VGG16
+    from denseNet import DenseNet
+    from Inception_v2 import Inception_v2
     from utils import read_data_label 
     if args.model == 'resnet':
         model = ResNet50(enable_lat =args.enable_lat,
@@ -476,13 +484,21 @@ if __name__ == "__main__":
                       num_classes=10,
                       if_dropout=args.dropout
                       )
+    elif args.model == 'densenet':
+        model = DenseNet()
+    elif args.model == 'inception':
+        model = Inception_v2()
     model.cuda()
     model.load_state_dict(torch.load((args.modelpath)))  
     # if cifar then normalize epsilon from [0,255] to [0,1]
+    '''
     if args.dataset == 'cifar10':
         eps = args.attack_epsilon / 255.0
     else:
         eps = args.attack_epsilon
+    '''
+    eps = args.attack_epsilon
+    # the last layer of densenet is F.log_softmax, while CrossEntropyLoss have contained Softmax()
     attack = Attack(dataroot = "/media/dsg3/dsgprivate/lat/data/cifar10/",
                     dataset  = args.dataset,
                     batch_size = args.attack_batchsize,
@@ -491,6 +507,7 @@ if __name__ == "__main__":
                     epsilon = eps,
                     alpha =  args.attack_alpha,
                     iteration = args.attack_iter)
+        
     if args.attack == 'fgsm':
         test_data_cln, test_data_adv, test_label, test_label_adv = attack.fgsm()
     elif args.attack == 'ifgsm':
