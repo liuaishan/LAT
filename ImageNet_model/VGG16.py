@@ -7,7 +7,7 @@ from torch.nn import functional as F
 #output size : 1000
 
 class VGG16(nn.Module):
-    def __init__(self, enable_lat, epsilon, pro_num, batch_size = 128, num_classes=1000, if_dropout = False):
+    def __init__(self, enable_lat, epsilon, pro_num, batch_size = 128, num_classes=200, if_dropout = False):
         super(VGG16, self).__init__()
         print('| VGG 16 for ImageNet')
         self.batch_size = batch_size
