@@ -7,7 +7,6 @@ import torch.nn as nn
 from torch.autograd import Variable
 import torchvision
 import torchvision.transforms as transforms
-from pathlib import Path
 import pickle
 import matplotlib.pyplot as plt
 import numpy as np 
@@ -16,7 +15,7 @@ import os
 import argparse
 
 
-device_id = 3
+device_id = 5
 
 def get_bool(string):
     if(string == 'False'):
@@ -406,8 +405,8 @@ class Attack():
 
 def save_img(imgpath,test_data_cln, test_data_adv, test_label, test_label_adv):
     #save adversarial example
-    if Path(imgpath).exists()==False:
-        Path(imgpath).mkdir(parents=True)
+    if os.path.exists(imgpath)==False:
+        os.mkdirs(imgpath)
     toImg = transforms.ToPILImage()
     image = test_data_cln.cpu()
     image_adv = test_data_adv.cpu()
@@ -419,10 +418,10 @@ def save_img(imgpath,test_data_cln, test_data_adv, test_label, test_label_adv):
         #print(image[i].size())
         im = toImg(image[i])
         #im.show()
-        im.save(Path(imgpath)/Path('{}_label_{}_cln.jpg'.format(i,test_label[i])))
+        im.save(imgpath+'{}_label_{}_cln.jpg'.format(i,test_label[i]))
         im = toImg(image_adv[i])
         #im.show()
-        im.save(Path(imgpath)/Path('{}_label_{}_adv.jpg'.format(i,test_label_adv[i])))
+        im.save(imgpath+'{}_label_{}_adv.jpg'.format(i,test_label_adv[i]))
 
 def display(test_data_cln, test_data_adv, test_label, test_label_adv):
     # display a batch adv
@@ -445,18 +444,18 @@ def display(test_data_cln, test_data_adv, test_label, test_label_adv):
 
 
 def save_data_label(path, test_data_cln, test_data_adv, test_label, test_label_adv):
-    if Path(path).exists() == False:
-        Path(path).mkdir(parents=True)
-    with open(Path(path)/Path('test_data_cln.p'),'wb') as f:
+    if os.path.exists(path) == False:
+        os.mkdirs(path)
+    with open(path+'test_data_cln.p','wb') as f:
         pickle.dump(test_data_cln.cpu(), f, pickle.HIGHEST_PROTOCOL)
 
-    with open(Path(path)/Path('test_adv(eps_{:.3f}).p'.format(eps)),'wb') as f:
+    with open(path+'test_adv(eps_{:.3f}).p'.format(eps),'wb') as f:
         pickle.dump(test_data_adv.cpu(), f, pickle.HIGHEST_PROTOCOL)
 
-    with open(Path(path)/Path('test_label.p'),'wb') as f:
+    with open(path+'test_label.p','wb') as f:
         pickle.dump(test_label.cpu(), f, pickle.HIGHEST_PROTOCOL)
     
-    with open(Path(path)/Path('label_adv(eps_{:.3f}).p'.format(eps)),'wb') as f:
+    with open(path+'label_adv(eps_{:.3f}).p'.format(eps),'wb') as f:
         pickle.dump(test_label_adv.cpu(), f, pickle.HIGHEST_PROTOCOL)
 
 
@@ -491,13 +490,13 @@ if __name__ == "__main__":
     model.cuda()
     model.load_state_dict(torch.load((args.modelpath)))  
     # if cifar then normalize epsilon from [0,255] to [0,1]
-    '''
+    
     if args.dataset == 'cifar10':
         eps = args.attack_epsilon / 255.0
     else:
         eps = args.attack_epsilon
-    '''
-    eps = args.attack_epsilon
+    
+    #eps = args.attack_epsilon
     # the last layer of densenet is F.log_softmax, while CrossEntropyLoss have contained Softmax()
     attack = Attack(dataroot = "/media/dsg3/dsgprivate/lat/data/cifar10/",
                     dataset  = args.dataset,

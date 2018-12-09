@@ -49,3 +49,8 @@ def read_data_label(data_path, label_path):
     return test_data, test_label, size
 
 
+def conv_init(m):
+    classname = m.__class__.__name__
+    if classname.find('Conv') != -1:
+        nn.init.xavier_uniform_(m.weight, gain=np.sqrt(2))
+        nn.init.constant_(m.bias, 0)

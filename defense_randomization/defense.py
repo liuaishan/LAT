@@ -66,7 +66,6 @@ def padding_layer_cifar(inputs, shape):
         padded_img = torch.cat([padded_img,padding_tmp]) 
     return padded_img
 
-
 def main():
     torch.cuda.set_device(device_id)
     toPIL = transforms.ToPILImage()
@@ -136,7 +135,7 @@ def main():
     print('Before resizing and padding the Accuracy is : {:.2f} %'.format(100 * correct / total))
     print('After resizing and padding the Accuracy is: {:.2f} %'.format(100 * correct_pad / total))
     model.train()
-
+    
 
 if __name__ == "__main__":
     main()
