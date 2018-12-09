@@ -1,26 +1,31 @@
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+import numpy as np
 from torch.autograd import Variable
 import sys
 
 class ResNet50(nn.Module):
-    def __init__(self, enable_lat, epsilon, pro_num, batch_size = 128, num_classes=10, if_dropout = False):
+    def __init__(self, enable_lat, epsilon, pro_num, batch_size = 32, num_classes=1000, if_dropout = False):
         super(ResNet50, self).__init__()
-        self.in_planes = 16
+        self.in_planes = 64
         block = Bottleneck
         num_blocks = [3,4,6,3]
-        print('| Resnet 50 for CIFAR-10')
-        self.register_buffer('x_reg', torch.zeros([batch_size, 3, 32, 32]))
-        self.conv1 = conv3x3(3,16)
-        self.register_buffer('z0_reg', torch.zeros([batch_size, 16, 32, 32]))
-        self.bn1 = nn.BatchNorm2d(16)
-        self.layer1 = self._make_layer(enable_lat, epsilon, pro_num, batch_size, block, 16, num_blocks[0], stride=1, imgSize=32)
-        self.layer2 = self._make_layer(enable_lat, epsilon, pro_num, batch_size, block, 32, num_blocks[1], stride=2, imgSize=16)
-        self.layer3 = self._make_layer(enable_lat, epsilon, pro_num, batch_size, block, 64, num_blocks[2], stride=2, imgSize=8)
-        self.layer4 = self._make_layer(enable_lat, epsilon, pro_num, batch_size, block, 128, num_blocks[3], stride=2, imgSize=4)
-        self.linear = nn.Linear(128*block.expansion, num_classes)
+        print('| Resnet 50 for ImageNet')
+        self.register_buffer('x_reg', torch.zeros([batch_size, 3, 224, 224]))
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,bias=False)
+        self.register_buffer('z0_reg', torch.zeros([batch_size, 64, 224, 224]))
+        self.bn1 = nn.BatchNorm2d(64)
+        self.layer1 = self._make_layer(enable_lat, epsilon, pro_num, batch_size, block, 64, num_blocks[0], stride=1, imgSize=224)
+        self.layer2 = self._make_layer(enable_lat, epsilon, pro_num, batch_size, block, 128, num_blocks[1], stride=2, imgSize=112)
+        self.layer3 = self._make_layer(enable_lat, epsilon, pro_num, batch_size, block, 256, num_blocks[2], stride=2, imgSize=56)
+        self.layer4 = self._make_layer(enable_lat, epsilon, pro_num, batch_size, block, 512, num_blocks[3], stride=2, imgSize=28)
+        self.linear = nn.Linear(512*block.expansion, num_classes)
 
         self.enable_lat = enable_lat
         self.epsilon = epsilon
@@ -65,12 +70,13 @@ class ResNet50(nn.Module):
         a2 = self.layer2(a1)
         a3 = self.layer3(a2)
         a4 = self.layer4(a3)
-
-        p4 = F.avg_pool2d(a4, 4)
-
+        #print(a4.size())
+        p4 = F.avg_pool2d(a4,8)
+        #print(p4.size())
         out = self.linear(p4.view(p4.size(0), -1))
         if (self.if_dropout):
-            out = F.dropout(out, p=0.5, training=self.training)
+            out = F.dropout(out, p=0.3, training=self.training)
+        
         return out
     
     def zero_reg(self):
@@ -78,7 +84,7 @@ class ResNet50(nn.Module):
         self.z0_reg.data = self.z0_reg.data.fill_(0.0)
         num_blocks=[3,4,6,3]
         for i in range(0,4):
-            for j in range(num_blocks[i]):
+            for j in range(0,num_blocks[i]):
                 for k in range(0,3):
                     exec("self.layer{}[j].z{}_reg.data = self.layer{}[j].z{}_reg.data.fill_(0.0)".format(i+1,k+1,i+1,k+1))
 
@@ -150,44 +156,12 @@ class Bottleneck(nn.Module):
             z3_add = self.z3
         a3 = self.bn3(z3_add)
 
-        z4_sc=self.shortcut(x)+a3
+        z4_sc = self.shortcut(x) + a3
         a4 = F.relu(z4_sc)
 
         return a4
 
 
-
-def conv_init(m):
-    classname = m.__class__.__name__
-    if classname.find('Conv') != -1:
-        nn.init.xavier_uniform_(m.weight, gain=np.sqrt(2))
-        nn.init.constant_(m.bias, 0)
-'''
-class BasicBlock(nn.Module):
-    expansion = 1
-
-    def __init__(self, in_planes, planes, stride=1):
-        super(BasicBlock, self).__init__()
-        self.conv1 = conv3x3(in_planes, planes, stride)
-        self.bn1 = nn.BatchNorm2d(planes)
-        self.conv2 = conv3x3(planes, planes)
-        self.bn2 = nn.BatchNorm2d(planes)
-
-        self.shortcut = nn.Sequential()
-        if stride != 1 or in_planes != self.expansion * planes:
-            self.shortcut = nn.Sequential(
-                nn.Conv2d(in_planes, self.expansion*planes, kernel_size=1, stride=stride, bias=True),
-                nn.BatchNorm2d(self.expansion*planes)
-            )
-
-    def forward(self, x):
-        out = F.relu(self.bn1(self.conv1(x)))
-        out = self.bn2(self.conv2(out))
-        out += self.shortcut(x)
-        out = F.relu(out)
-
-        return out
-'''
 
 
 
