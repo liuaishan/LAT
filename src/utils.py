@@ -54,3 +54,9 @@ def conv_init(m):
     if classname.find('Conv') != -1:
         nn.init.xavier_uniform_(m.weight, gain=np.sqrt(2))
         nn.init.constant_(m.bias, 0)
+
+def ResNet_init(m):
+    if isinstance(m, nn.Conv2d):
+        nn.init.kaiming_uniform_(m.weight, a=0, mode='fan_in')
+        if(not m.bias is None):
+            nn.init.constant_(m.bias.data,0)  
