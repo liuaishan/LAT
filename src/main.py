@@ -17,6 +17,7 @@ from utils import read_data_label
 from LeNet import LeNet
 from ResNet import *
 from VGG import *
+from alexnet import *
 
 from torch.autograd import Variable
 
@@ -162,6 +163,21 @@ def train_op(model):
                         model.x_reg.data = args.alpha * model.x_reg.data + \
                                             model.input.grad / torch.norm(torch.norm(torch.norm(model.input.grad, p = 2,dim = 2),p = 2,dim = 2),p = 2,dim = 1).view(args.batchsize,1,1,1).repeat(1,3,32,32)
 
+                if args.model == 'alexnet':
+                    if args.enable_lat:
+                        model.x_reg.data = args.alpha * model.x_reg.data + \
+                                          model.input.grad / torch.norm(torch.norm(torch.norm(model.input.grad, p = 2,dim = 2),p = 2,dim = 2),p = 2,dim = 1).view(args.batchsize,1,1,1).repeat(1,3,224,224)
+                        model.z1_reg.data = args.alpha * model.z1_reg.data + \
+                                          model.z1.grad / torch.norm(torch.norm(torch.norm(model.z1.grad, p = 2,dim = 2),p = 2,dim = 2),p = 2,dim = 1).view(args.batchsize,1,1,1).repeat(1,64,55,55)
+                        model.z2_reg.data = args.alpha * model.z2_reg.data + \
+                                          model.z2.grad / torch.norm(torch.norm(torch.norm(model.z2.grad, p = 2,dim = 2),p = 2,dim = 2),p = 2,dim = 1).view(args.batchsize,1,1,1).repeat(1,192,27,27)
+                        model.z3_reg.data = args.alpha * model.z3_reg.data + \
+                                          model.z3.grad / torch.norm(torch.norm(torch.norm(model.z3.grad, p = 2,dim = 2),p = 2,dim = 2),p = 2,dim = 1).view(args.batchsize,1,1,1).repeat(1,384,13,13)
+                        model.z4_reg.data = args.alpha * model.z4_reg.data + \
+                                          model.z4.grad / torch.norm(torch.norm(torch.norm(model.z4.grad, p = 2,dim = 2),p = 2,dim = 2),p = 2,dim = 1).view(args.batchsize,1,1,1).repeat(1,256,13,13)    
+                        model.z5_reg.data = args.alpha * model.z5_reg.data + \
+                                          model.z5.grad / torch.norm(torch.norm(torch.norm(model.z5.grad, p = 2,dim = 2),p = 2,dim = 2),p = 2,dim = 1).view(args.batchsize,1,1,1).repeat(1,256,13,13)                              
+                                            
             # test acc for validation set
             if step % 50 == 0:
                 model.zero_reg()
@@ -276,6 +292,12 @@ if __name__ == "__main__":
                     pro_num=args.pro_num,
                     batch_size=args.batchsize,
                     if_dropout=args.dropout)
+    elif args.model == 'alexnet':
+        cnn = AlexNet(enable_lat=args.enable_lat,
+                      epsilon=args.epsilon, 
+                      pro_num=args.pro_num, 
+                      batch_size=args.batchsize, 
+                      if_dropout=args.dropout)
     cnn.cuda()
 
     if os.path.exists(real_model_path):
