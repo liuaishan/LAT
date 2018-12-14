@@ -73,9 +73,10 @@ class ResNet50(nn.Module):
         #print(a4.size())
         p4 = F.avg_pool2d(a4,8)
         #print(p4.size())
-        out = self.linear(p4.view(p4.size(0), -1))
+        out = p4.view(p4.size(0), -1)
         if (self.if_dropout):
-            out = F.dropout(out, p=0.3, training=self.training)
+            out = F.dropout(out, p=0.5, training=self.training)
+        out = self.linear(out)
         
         return out
     
