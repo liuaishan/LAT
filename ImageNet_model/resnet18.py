@@ -158,7 +158,6 @@ class BasicBlock(nn.Module):
         else:
             z2_add = self.z2
         a2 = self.bn2(z2_add)
-        a2 = self.relu(a2)
 
         # if shortcut = sequential(), then shortcut(x) = x
         a2 += self.shortcut(x)
