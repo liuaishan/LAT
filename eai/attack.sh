@@ -1,0 +1,18 @@
+python attack.py \
+  --attack 'stepll' \
+  --generate 'True' \
+  --droplast 'False' \
+  --model 'vgg' \
+  --enable_lat 'False'\
+  --modelpath "/media/dsg3/dsgprivate/yuhang/model/vgg16/naive/naive_param.pkl" \
+  --model_batchsize 128 \
+  --dropout 'True' \
+  --dataset 'cifar10' \
+  --attack_batchsize 1000 \
+  --attack_epsilon 8 \
+  --attack_alpha 1 \
+  --attack_iter 10 \
+  --attack_momentum 1.0 \
+  --savepath "/media/dsg3/dsgprivate/lat/test_lip/stepll/" \
+  --lat_epsilon 0.6 \
+  --lat_pronum 7
