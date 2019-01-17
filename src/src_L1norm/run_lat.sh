@@ -1,0 +1,17 @@
+python main.py \
+  --batchsize 128 \
+  --epoch 50 \
+  --lr 0.0002 \
+  --enable_lat 'True' \
+  --test_flag 'False' \
+  --test_data_path "/media/dsg3/dsgprivate/lat/test/new/test_data_cln.p" \
+  --test_label_path "/media/dsg3/dsgprivate/lat/test/new/test_label.p" \
+  --train_data_path "/media/dsg3/dsgprivate/lat/data/cifar10/" \
+  --model_path "/media/dsg3/dsgprivate/yuhang/model/resnet50/lat/3step_p5e0.3a0.7/" \
+  --pro_num 5 \
+  --alpha 0.7 \
+  --epsilon 0.3 \
+  --dataset "cifar10" \
+  --model "resnet" \
+  --dropout 'False' \
+  --logfile 'log_lat_step4.txt'

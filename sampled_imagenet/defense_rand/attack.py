@@ -7,6 +7,8 @@ import torch.nn as nn
 from torch.autograd import Variable
 import torchvision
 import torchvision.transforms as transforms
+import torchvision.datasets as datasets
+import torch.utils.data as Data
 from pathlib import Path
 import pickle
 import matplotlib.pyplot as plt
@@ -15,9 +17,9 @@ import os
 import argparse
 from VGG import VGG16
 from ResNet import ResNet50
+from alexnet import AlexNet
 from torch.autograd import Function
 
-#device_id = 3
 os.environ["CUDA_VISIBLE_DEVICES"] = "4"
 
 def get_bool(string):
@@ -48,24 +50,28 @@ parser.add_argument('--dataset', default='cifar10', help='dataset used for attac
 args = parser.parse_args()
 #print(args)
 
-IMG_RESIZE = 35
+IMG_SIZE = 224
+IMG_RESIZE = 254
+MEAN = [ 0.485, 0.456, 0.406 ]
+STD = [ 0.229, 0.224, 0.225 ]
+
 
 def defence(inputs):
     x = inputs
     x = x.cuda()
     toPIL = transforms.ToPILImage()
     toTensor = transforms.ToTensor()
-    # Randomly resize image from 32 to 35
-    resize_shape = np.random.randint(32,35)
+    # Randomly resize image from IMG_SIZE to IMG_RESIZE
+    resize_shape = np.random.randint(IMG_SIZE,IMG_RESIZE)
     resize = transforms.Resize(resize_shape)
-    # x: batch x 3 x 32 x 32
+    # x: batch x 3 x IMG_SIZE x IMG_SIZE
     resized_img = torch.Tensor([])
-    for i in range(x.size()[0]):
-        resized_pil = resize(toPIL(x[i].cpu()))
+    for k in range(x.size()[0]):
+        resized_pil = resize(toPIL(x[k].cpu()))
         resized_img = torch.cat([resized_img,toTensor(resized_pil)])
     resized_img = resized_img.view(args.model_batchsize,3,resize_shape,resize_shape)
     #print(type(resized_img))
-    # Randomly padding from rand to 35
+    # Randomly padding from rand to IMG_RESIZE
     pad_shape = np.random.randint(0, IMG_RESIZE-resize_shape)
     shape = torch.Tensor([IMG_RESIZE,pad_shape,pad_shape])
     
@@ -89,7 +95,7 @@ def defence(inputs):
     padded_img = padded_img.view(args.model_batchsize,3,IMG_RESIZE,IMG_RESIZE)
     #print('input size = {}, shape = {}, padded size = {}'.format(resized_img.size(),shape.size(),padded_img.size()))
     return padded_img
-
+'''
 def returnGrad(model,x_adv,y):
     h=model(x_adv)
     loss_func = nn.CrossEntropyLoss()
@@ -98,7 +104,7 @@ def returnGrad(model,x_adv,y):
     if x_adv.grad is not None:
         x_adv.grad.data.fill_(0)
     return x_adv.grad
-    
+'''    
     
 class Attack():
     def __init__(self, dataroot, dataset, batch_size, target_model, criterion, epsilon=0.2, alpha=0.03, iteration=1):
@@ -114,11 +120,29 @@ class Attack():
     # root of MNIST/CIFAR-10 testset
     def return_data(self):
         if self.dataset == 'mnist':
-            test_dataset = torchvision.datasets.MNIST(root=self.dataroot,train=False, transform=transforms.ToTensor())
+            test_dataset = datasets.MNIST(root=self.dataroot,train=False, transform=transforms.ToTensor())
         elif self.dataset == 'cifar10':
-            test_dataset = torchvision.datasets.CIFAR10(root=self.dataroot,train=False, transform=transforms.ToTensor())
-        test_loader = torch.utils.data.DataLoader(dataset=test_dataset,batch_size=self.batch_size,shuffle=False,drop_last=args.droplast)
-        return test_loader
+            test_dataset = datasets.CIFAR10(root=self.dataroot,train=False, transform=transforms.ToTensor())
+        elif self.dataset == 'imagenet':
+            valdir = os.path.join(self.dataroot, 'val')
+            val_dataset = datasets.ImageFolder(
+                valdir,
+                transforms.Compose([
+                    # scale up to 256
+                    transforms.Resize(256),
+                    # center crop to 224
+                    transforms.CenterCrop(224),
+                    transforms.ToTensor()#,
+                    #transforms.Normalize(mean = [ 0.485, 0.456, 0.406 ],
+                    #                 std = [ 0.229, 0.224, 0.225 ])
+                ]))
+        if self.dataset == 'imagenet':
+            val_loader = Data.DataLoader(
+                    dataset=val_dataset,batch_size=self.batch_size, shuffle=False,num_workers=4,drop_last=args.droplast)
+            return val_loader
+        else:
+            test_loader = Data.DataLoader(dataset=test_dataset,batch_size=self.batch_size,shuffle=False,drop_last=args.droplast)
+            return test_loader
         
     def bpda(self):
         test_loader = self.return_data()
@@ -132,7 +156,14 @@ class Attack():
             y_true = Variable(labels, requires_grad=False).cuda()
             x = Variable(images, requires_grad = True).cuda()
             x.retain_grad()
+            #print(x.size())
             fx = defence(x)
+            #------------- Normalize ---------------------
+            for m in range(fx.cpu().size(0)):
+                for n in range(0,3):
+                    fx[m][n] = (fx[m][n] - MEAN[n]) / STD[n]
+            #---------------------------------------------
+            #print(fx.size())
             fx = Variable(fx,requires_grad=True).cuda()
             ffx = fx.data
             h = self.model(fx)
@@ -164,17 +195,18 @@ class Attack():
             correct_adv += (predictions_adv == y_true).sum()
 
             #print(x.data.size(),x_adv.data.size(),labels.size())
+            '''
             if i == 0:
-                test_data_cln = x.data.detach()
-                test_data_adv = fx.data
-                test_label = labels
-                test_label_adv = predictions_adv
+                test_data_cln = x.data.detach().cpu()
+                test_data_adv = fx.data.cpu()
+                test_label = labels.cpu()
+                test_label_adv = predictions_adv.cpu()
             else:
-                test_data_cln = torch.cat([test_data_cln, x.data.detach()],0)
-                test_data_adv = torch.cat([test_data_adv, fx.data.detach()],0)
-                test_label = torch.cat([test_label, labels],0)
-                test_label_adv = torch.cat([test_label_adv, predictions_adv],0)
-
+                test_data_cln = torch.cat([test_data_cln, x.data.detach().cpu()],0)
+                test_data_adv = torch.cat([test_data_adv, fx.data.detach().cpu()],0)
+                test_label = torch.cat([test_label, labels.cpu()],0)
+                test_label_adv = torch.cat([test_label_adv, predictions_adv.cpu()],0)
+            '''
             #print(test_data_cln.size(),test_data_adv.size(),test_label.size())
 
             correct += (predictions == predictions_adv).sum()
@@ -186,7 +218,7 @@ class Attack():
         print("Before BPDA the accuracy is",float(100*correct_cln)/total)
         print("After BPDA the accuracy is",float(100*correct_adv)/total)
 
-        return test_data_cln, test_data_adv, test_label, test_label_adv 
+        #return test_data_cln, test_data_adv, test_label, test_label_adv 
 
 
 if __name__ == "__main__":
@@ -213,8 +245,17 @@ if __name__ == "__main__":
         model = DenseNet()
     elif args.model == 'inception':
         model = Inception_v2()
+    elif args.model == 'alexnet':
+        model = AlexNet(enable_lat=args.enable_lat,
+                      epsilon=args.lat_epsilon,
+                      pro_num=args.lat_pronum,
+                      batch_size=args.model_batchsize,
+                      num_classes=200,
+                      if_dropout=args.dropout
+                      )
     model.cuda()
-    model.load_state_dict(torch.load((args.modelpath)))  
+    model.load_state_dict(torch.load((args.modelpath)))
+    print("model load successfully")  
     # if cifar then normalize epsilon from [0,255] to [0,1]
     '''
     if args.dataset == 'cifar10':
@@ -224,7 +265,7 @@ if __name__ == "__main__":
     '''
     eps = args.attack_epsilon
     # the last layer of densenet is F.log_softmax, while CrossEntropyLoss have contained Softmax()
-    attack = Attack(dataroot = "/media/dsg3/dsgprivate/lat/data/cifar10/",
+    attack = Attack(dataroot = "/media/dsg3/dsgprivate/lat/data/sampled_imagenet/",
                     dataset  = args.dataset,
                     batch_size = args.attack_batchsize,
                     target_model = model,
@@ -232,9 +273,10 @@ if __name__ == "__main__":
                     epsilon = eps,
                     alpha =  args.attack_alpha,
                     iteration = args.attack_iter)
-        
-    test_data_cln, test_data_adv, test_label, test_label_adv = attack.bpda()
-    
+    if args.generate:
+        test_data_cln, test_data_adv, test_label, test_label_adv = attack.bpda()
+    else:
+        attack.bpda()
     print(test_data_adv.size(),test_label.size(), type(test_data_adv))
     '''
     test_loader = attack.return_data()

@@ -14,6 +14,7 @@ from torch import optim
 from torch import autograd
 from helpers import *
 import VGG
+from ResNet import ResNet50
 import torchvision
 import torchvision.transforms as transforms
 from torch.autograd import Variable
@@ -34,6 +35,8 @@ X_MAX = 1.
 TARGETED = False
 DEBUG = False
 CUDA = True
+#-------------------------- Adv saving path -------------------------------------------------------
+PATH = "/media/dsg3/dsgprivate/lat/test_cw/resnet/"
 #--------------------------------------------------------------------------------------------------------
 # Initial_const++: init loss++ convergence speed - Failure none ; 
 # confidence++: total loss++, convergence speed --, Failure ++ ;
@@ -49,12 +52,12 @@ TARGETED = True          # should we target one specific class? or just be wrong
 CONFIDENCE = 0           # how strong the adversarial example should be
 INITIAL_CONST = 1e-3     # the initial constant c to pick as a first guess
 '''
-MODEL = 'vgg'
+MODEL = 'resnet'
 DATASET = 'cifar10'
 DATA_ROOT = "/media/dsg3/dsgprivate/lat/data/cifar10/"
 BATCHSIZE = 128
 DROP_LAST = False
-MODEL_PATH = "/media/dsg3/dsgprivate/lat/liuaishan/cifar10/vgg16_origin_dropout/naive_param.pkl"
+MODEL_PATH = "/media/dsg3/dsgprivate/yuhang/model/resnet50/naive/naive_param.pkl"
 
 # root of MNIST/CIFAR-10 testset
 def return_data():
@@ -329,6 +332,13 @@ def main():
                           batch_size=BATCHSIZE,
                           num_classes=NUM_CLASSES,
                           if_dropout=False)
+    elif MODEL == 'resnet':
+        model = ResNet50(enable_lat=False,
+                          epsilon=0.5, 
+                          pro_num=5,
+                          batch_size=BATCHSIZE,
+                          num_classes=NUM_CLASSES,
+                          if_dropout=True)
     model.cuda()
     model.load_state_dict(torch.load((MODEL_PATH)))
     dataloader = return_data()
@@ -369,6 +379,5 @@ def main():
     return test_data_cln, test_data_adv, test_label, test_label_adv
 if __name__ == '__main__':
     test_data_cln, test_data_adv, test_label, test_label_adv=main()
-    PATH = "/media/dsg3/dsgprivate/lat/test_cw/"
     save_data_label(PATH, test_data_cln, test_data_adv, test_label, test_label_adv)
     save_img(PATH, test_data_cln, test_data_adv, test_label, test_label_adv)

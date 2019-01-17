@@ -1,0 +1,18 @@
+python main.py \
+  --batchsize 128 \
+  --epoch 50 \
+  --lr 0.0001 \
+  --enable_lat 'True' \
+  --test_flag 'False' \
+  --test_data_path "/media/dsg3/dsgprivate/lat/test/new/test_data_cln.p" \
+  --test_label_path "/media/dsg3/dsgprivate/lat/test/new/test_label.p" \
+  --train_data_path "/media/dsg3/dsgprivate/lat/data/cifar10/" \
+  --model_path "/media/dsg3/dsgprivate/yuhang/model/resnet50/lat/4step_p7e0.6a0.8/noise_nodrop/" \
+  --pro_num 7 \
+  --alpha 0.8 \
+  --epsilon 0.6 \
+  --dataset "cifar10" \
+  --model "resnet" \
+  --dropout 'False' \
+  --logfile 'log_lat_step4_nodrop.txt' \
+  --enable_noise 'True'

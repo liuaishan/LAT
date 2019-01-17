@@ -1,0 +1,11 @@
+python defense.py \
+  --batch_size 128 \
+  --img_size 32 \
+  --img_resize 35 \
+  --iter_times 1 \
+  --num_classes 10 \
+  --test_data_path "/media/dsg3/dsgprivate/lat/test_cw/resnet/test_adv(k5c0.050).p" \
+  --test_label_path "/media/dsg3/dsgprivate/lat/test/new/test_label.p" \
+  --model 'resnet' \
+  --model_path "/media/dsg3/dsgprivate/yuhang/model/resnet50/naive/naive_param.pkl" \
+  --test_flag 'False'

@@ -1,0 +1,18 @@
+python attack2.py \
+  --attack 'bpda_all' \
+  --generate 'False' \
+  --droplast 'True' \
+  --model 'alexnet' \
+  --enable_lat 'False'\
+  --modelpath "/media/dsg3/dsgprivate/yuhang/model/alexnet/nat/naive_param.pkl" \
+  --model_batchsize 100 \
+  --dropout 'True' \
+  --dataset 'imagenet' \
+  --attack_batchsize 100 \
+  --attack_epsilon 0.03 \
+  --attack_alpha 0.003 \
+  --attack_iter 6 \
+  --attack_momentum 1.0 \
+  --savepath "/media/dsg3/dsgprivate/lat/test_stepll/train_resnet/" \
+  --lat_epsilon 0.6 \
+  --lat_pronum 7

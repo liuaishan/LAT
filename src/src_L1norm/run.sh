@@ -1,0 +1,16 @@
+python main.py \
+  --batchsize 128 \
+  --epoch 40 \
+  --lr 0.00001 \
+  --enable_lat 'True' \
+  --test_flag 'True' \
+  --test_data_path "/media/dsg3/dsgprivate/lat/test_momentum/resnet/test_adv(eps_0.031).p" \
+  --test_label_path "/media/dsg3/dsgprivate/lat/test_momentum/resnet/test_label.p" \
+  --train_data_path "/media/dsg3/dsgprivate/lat/data/cifar10/" \
+  --model_path "/media/dsg3/dsgprivate/lat/liuaishan/cifar10/vgg16_dropout/cur_cln_p3a0.0e1.0_p5a0.7e0.3_new/" \
+  --pro_num 5 \
+  --alpha 0.7 \
+  --epsilon 0.3 \
+  --dataset "cifar10" \
+  --model "vgg" \
+  --dropout 'True'

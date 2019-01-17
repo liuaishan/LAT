@@ -1,0 +1,11 @@
+python defense.py \
+  --batch_size 100 \
+  --img_size 224 \
+  --img_resize 254 \
+  --iter_times 1 \
+  --num_classes 200 \
+  --test_data_path "/media/dsg3/dsgprivate/lat/sampled_imagenet/test/alexnet/test_data_cln.p" \
+  --test_label_path "/media/dsg3/dsgprivate/lat/sampled_imagenet/test/alexnet/test_label.p" \
+  --model 'alexnet' \
+  --model_path "/media/dsg3/dsgprivate/yuhang/model/alexnet/eat/naive_param.pkl" \
+  --test_flag 'True'

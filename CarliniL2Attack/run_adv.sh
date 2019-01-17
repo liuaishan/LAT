@@ -1,0 +1,17 @@
+python main.py \
+  --batchsize 128 \
+  --epoch 40 \
+  --lr 0.00001 \
+  --enable_lat 'False' \
+  --test_flag 'True' \
+  --adv_flag 'True' \
+  --test_data_path "/media/dsg3/dsgprivate/lat/test_cw/test_adv(k3c0.030).p" \
+  --test_label_path "/media/dsg3/dsgprivate/lat/test_cw/test_label.p" \
+  --train_data_path "/media/dsg3/dsgprivate/lat/data/cifar10/" \
+  --model_path "/media/dsg3/dsgprivate/yuhang/model/resnet50/dplat-18/" \
+  --pro_num 7 \
+  --alpha 0.8 \
+  --epsilon 0.6 \
+  --dataset "cifar10" \
+  --model "resnet" \
+  --dropout 'True'
